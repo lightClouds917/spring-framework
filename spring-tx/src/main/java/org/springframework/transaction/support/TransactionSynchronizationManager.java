@@ -148,6 +148,7 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 实际检查为给定key(dataSource)绑定的资源的值（如connectionHolder）
 	 * Actually check the value of the resource that is bound for the given key.
 	 */
 	@Nullable
@@ -157,9 +158,11 @@ public abstract class TransactionSynchronizationManager {
 			return null;
 		}
 		Object value = map.get(actualKey);
+		// 透明地删除标记为无效的ResourceHolder ...
 		// Transparently remove ResourceHolder that was marked as void...
 		if (value instanceof ResourceHolder && ((ResourceHolder) value).isVoid()) {
 			map.remove(actualKey);
+			// 删除之后，如果元素空了，删除整个resources
 			// Remove entire ThreadLocal if empty...
 			if (map.isEmpty()) {
 				resources.remove();

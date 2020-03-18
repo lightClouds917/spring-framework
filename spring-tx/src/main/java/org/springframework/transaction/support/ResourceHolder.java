@@ -34,11 +34,14 @@ public interface ResourceHolder {
 	void reset();
 
 	/**
+	 * 通知此持有人它已取消与事务同步的绑定
 	 * Notify this holder that it has been unbound from transaction synchronization.
 	 */
 	void unbound();
 
 	/**
+	 * 确定此持有者是否被视为 无效
+	 * 比如：是上一个线程用过的
 	 * Determine whether this holder is considered as 'void',
 	 * i.e. as a leftover from a previous thread.
 	 */

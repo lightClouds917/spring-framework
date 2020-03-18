@@ -34,6 +34,7 @@ public abstract class ResourceHolderSynchronization<H extends ResourceHolder, K>
 	/**活跃的资源对象，比如connectionHolder*/
 	private final K resourceKey;
 
+	/**资源持有者的活跃状态*/
 	private volatile boolean holderActive = true;
 
 
@@ -95,10 +96,13 @@ public abstract class ResourceHolderSynchronization<H extends ResourceHolder, K>
 		if (shouldUnbindAtCompletion()) {
 			boolean releaseNecessary = false;
 			if (this.holderActive) {
+				// 线程绑定的资源持有者可能不再可用，因为afterCompletion可能是从其他线程调用的。
 				// The thread-bound resource holder might not be available anymore,
 				// since afterCompletion might get called from a different thread.
+				//置为非活跃状态
 				this.holderActive = false;
 				TransactionSynchronizationManager.unbindResourceIfPossible(this.resourceKey);
+				//取消与事务的绑定
 				this.resourceHolder.unbound();
 				releaseNecessary = true;
 			}
