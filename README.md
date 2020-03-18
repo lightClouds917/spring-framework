@@ -1,1 +1,6 @@
 ### Spring源码解析 by IT云清 
+DataSourceTransactionManagerTests
+
+
+JdbcTransactionObjectSupport 持有ConnectionHolder
+ConnectionHolder 持有ConnectionHandle和Connection

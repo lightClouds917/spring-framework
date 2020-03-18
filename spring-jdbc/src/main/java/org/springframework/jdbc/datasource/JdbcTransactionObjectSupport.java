@@ -51,6 +51,7 @@ public abstract class JdbcTransactionObjectSupport implements SavepointManager, 
 	private static final Log logger = LogFactory.getLog(JdbcTransactionObjectSupport.class);
 
 
+	/**连接持有者*/
 	@Nullable
 	private ConnectionHolder connectionHolder;
 

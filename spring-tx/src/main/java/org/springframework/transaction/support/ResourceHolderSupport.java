@@ -35,6 +35,7 @@ import org.springframework.transaction.TransactionTimedOutException;
  */
 public abstract class ResourceHolderSupport implements ResourceHolder {
 
+	/**是否与事务同步*/
 	private boolean synchronizedWithTransaction = false;
 
 	private boolean rollbackOnly = false;
@@ -48,6 +49,7 @@ public abstract class ResourceHolderSupport implements ResourceHolder {
 
 
 	/**
+	 * 将资源标记为与事务同步
 	 * Mark the resource as synchronized with a transaction.
 	 */
 	public void setSynchronizedWithTransaction(boolean synchronizedWithTransaction) {

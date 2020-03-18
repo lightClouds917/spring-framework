@@ -47,6 +47,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	public static final String SAVEPOINT_NAME_PREFIX = "SAVEPOINT_";
 
 
+	/**连接句柄*/
 	@Nullable
 	private ConnectionHandle connectionHandle;
 
@@ -112,6 +113,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	}
 
 	/**
+	 * 设置此连接持有者，是否代表一个活跃的，由JDBC管理的事务。
 	 * Set whether this holder represents an active, JDBC-managed transaction.
 	 * @see DataSourceTransactionManager
 	 */
@@ -120,6 +122,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	}
 
 	/**
+	 * 返回此连接持有者是否代表一个活跃的，由JDBC管理的事务。
 	 * Return whether this holder represents an active, JDBC-managed transaction.
 	 */
 	protected boolean isTransactionActive() {

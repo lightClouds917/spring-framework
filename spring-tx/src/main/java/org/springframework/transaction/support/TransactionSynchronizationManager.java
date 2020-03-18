@@ -81,6 +81,7 @@ public abstract class TransactionSynchronizationManager {
 	private static final ThreadLocal<Map<Object, Object>> resources =
 			new NamedThreadLocal<>("Transactional resources");
 
+	/**当前线程的事务同步集合：不为空，则说明当前线程的事务同步处于活跃状态*/
 	private static final ThreadLocal<Set<TransactionSynchronization>> synchronizations =
 			new NamedThreadLocal<>("Transaction synchronizations");
 
@@ -93,6 +94,7 @@ public abstract class TransactionSynchronizationManager {
 	private static final ThreadLocal<Integer> currentTransactionIsolationLevel =
 			new NamedThreadLocal<>("Current transaction isolation level");
 
+	/**实际事务活跃状态*/
 	private static final ThreadLocal<Boolean> actualTransactionActive =
 			new NamedThreadLocal<>("Actual transaction active");
 
@@ -257,6 +259,8 @@ public abstract class TransactionSynchronizationManager {
 	//-------------------------------------------------------------------------
 
 	/**
+	 * 返回当前线程的事务同步是否处于激活状态。
+	 * 可以在注册之前调用，以避免不必要的实例创建。
 	 * Return if transaction synchronization is active for the current thread.
 	 * Can be called before register to avoid unnecessary instance creation.
 	 * @see #registerSynchronization
@@ -266,6 +270,8 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 激活当前线程的事务同步
+	 * 激活当前线程的事务同步 初始化TransactionSynchronizationManager的synchronizations集合
 	 * Activate transaction synchronization for the current thread.
 	 * Called by a transaction manager on transaction begin.
 	 * @throws IllegalStateException if synchronization is already active
@@ -279,13 +285,14 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 为当前线程注册新的事务同步，通常由资源管理器代码调用
 	 * Register a new transaction synchronization for the current thread.
 	 * Typically called by resource management code.
 	 * <p>Note that synchronizations can implement the
 	 * {@link org.springframework.core.Ordered} interface.
 	 * They will be executed in an order according to their order value (if any).
-	 * @param synchronization the synchronization object to register
-	 * @throws IllegalStateException if transaction synchronization is not active
+	 * @param synchronization the synchronization object to register 要注册的事务同步对象
+	 * @throws IllegalStateException if transaction synchronization is not active 如果当前线程的事务同步未激活，会抛出异常
 	 * @see org.springframework.core.Ordered
 	 */
 	public static void registerSynchronization(TransactionSynchronization synchronization)
@@ -434,6 +441,7 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * //TODO AA
 	 * Expose whether there currently is an actual transaction active.
 	 * Called by the transaction manager on transaction begin and on cleanup.
 	 * @param active {@code true} to mark the current thread as being associated
@@ -454,7 +462,7 @@ public abstract class TransactionSynchronizationManager {
 	 * on PROPAGATION_REQUIRED, PROPAGATION_REQUIRES_NEW, etc).
 	 * @see #isSynchronizationActive()
 	 */
-	public static boolean isActualTransactionActive() {
+	public static boolean isActualTransactionActive() {//TODO
 		return (actualTransactionActive.get() != null);
 	}
 

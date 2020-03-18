@@ -28,8 +28,10 @@ package org.springframework.transaction.support;
 public abstract class ResourceHolderSynchronization<H extends ResourceHolder, K>
 		implements TransactionSynchronization {
 
+	/**资源持有者,比如数据源dataSource*/
 	private final H resourceHolder;
 
+	/**活跃的资源对象，比如connectionHolder*/
 	private final K resourceKey;
 
 	private volatile boolean holderActive = true;
