@@ -103,6 +103,7 @@ public class DefaultTransactionStatus extends AbstractTransactionStatus {
 	}
 
 	/**
+	 * 返回是否有实际的事务处于活跃状态
 	 * Return whether there is an actual transaction active.
 	 */
 	public boolean hasTransaction() {
@@ -115,6 +116,7 @@ public class DefaultTransactionStatus extends AbstractTransactionStatus {
 	}
 
 	/**
+	 * 返回是否已为此事务打开了新的事务同步
 	 * Return if a new transaction synchronization has been opened
 	 * for this transaction.
 	 */

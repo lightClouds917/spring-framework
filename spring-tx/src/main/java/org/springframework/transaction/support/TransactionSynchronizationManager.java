@@ -441,7 +441,10 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
-	 * //TODO AA
+	 * 表明当前是否有实际的活跃事务。
+	 * 事务管理器在事务开始和清理时调用。
+	 * 入参如果为true,将当前线程标记为与实际事务关联，为false，则重置
+	 *
 	 * Expose whether there currently is an actual transaction active.
 	 * Called by the transaction manager on transaction begin and on cleanup.
 	 * @param active {@code true} to mark the current thread as being associated
@@ -452,6 +455,10 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 返回当前是否有实际的事务处于活动状态。
+	 * 这表明当前线程是否与实际事务相关联，而不仅与活动事务同步相关联。
+	 * 由资源管理代码调用，该资源管理代码要区分活跃事务同步（有或没有后备资源事务；在PROPAGATION_SUPPORTS上）
+	 * 和实际活跃的事务（有后备资源事务；在PROPAGATION_REQUIRED，PROPAGATION_REQUIRES_NEW等）。
 	 * Return whether there currently is an actual transaction active.
 	 * This indicates whether the current thread is associated with an actual
 	 * transaction rather than just with active transaction synchronization.
@@ -468,6 +475,7 @@ public abstract class TransactionSynchronizationManager {
 
 
 	/**
+	 * 清理当前线程的整个事务同步状态：注册的同步以及各种事务特征。
 	 * Clear the entire transaction synchronization state for the current thread:
 	 * registered synchronizations as well as the various transaction characteristics.
 	 * @see #clearSynchronization()
