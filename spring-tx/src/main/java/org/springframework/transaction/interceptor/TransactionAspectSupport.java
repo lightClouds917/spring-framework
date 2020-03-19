@@ -268,56 +268,79 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 	 * General delegate for around-advice-based subclasses, delegating to several other template
 	 * methods on this class. Able to handle {@link CallbackPreferringPlatformTransactionManager}
 	 * as well as regular {@link PlatformTransactionManager} implementations.
-	 * @param method the Method being invoked
-	 * @param targetClass the target class that we're invoking the method on
-	 * @param invocation the callback to use for proceeding with the target invocation
-	 * @return the return value of the method, if any
+	 * @param method the Method being invoked 被调用的目标方法
+	 * @param targetClass the target class that we're invoking the method on 我们进行方法调用的目标类
+	 * @param invocation the callback to use for proceeding with the target invocation 用于进行目标调用的回调
+	 * @return the return value of the method, if any 方法调用的返回值
 	 * @throws Throwable propagated from the target invocation
 	 */
 	@Nullable
 	protected Object invokeWithinTransaction(Method method, @Nullable Class<?> targetClass,
 			final InvocationCallback invocation) throws Throwable {
 
+		// 如果事务属性为空，则该方法为非事务方法
 		// If the transaction attribute is null, the method is non-transactional.
 		TransactionAttributeSource tas = getTransactionAttributeSource();
+		// 获取事务属性对象信息，通过TransactionAttributeSource获取
 		final TransactionAttribute txAttr = (tas != null ? tas.getTransactionAttribute(method, targetClass) : null);
+		// 确定用什么事务管理器
 		final PlatformTransactionManager tm = determineTransactionManager(txAttr);
+		// 返回目标方法和目标类的字符串表达形式
 		final String joinpointIdentification = methodIdentification(method, targetClass, txAttr);
 
+		// 要区别不同类型的PlatformTransactionManager，它们的调用方式不同
+		// CallbackPreferringPlatformTransactionManager事务管理器，需要通过回调函数来实现事务的提交和回滚等操作
+		// 而非CallbackPreferringPlatformTransactionManager的事务管理器，则不需要
+		// 例如DataSourceTransactionManager，不需要通过回调的方式来提交和回滚事务
+
+		// 1.如果事务处理器不属于CallbackPreferringPlatformTransactionManager事务管理器
 		if (txAttr == null || !(tm instanceof CallbackPreferringPlatformTransactionManager)) {
+			// 使用getTransaction和commit / rollback调用进行标准事务处理
 			// Standard transaction demarcation with getTransaction and commit/rollback calls.
+			// 创建事务，并把事务相关信息保存到TransactionInfo当中，TransactionInfo保存了当前事务状态属性等一系列信息
 			TransactionInfo txInfo = createTransactionIfNecessary(tm, txAttr, joinpointIdentification);
 
 			Object retVal;
 			try {
+				// 这是一个环绕通知，调用链上的下一个拦截器，使得调用沿着拦截器链向下进行
+				// 最后使得目标对象的方法被调用
 				// This is an around advice: Invoke the next interceptor in the chain.
 				// This will normally result in a target object being invoked.
 				retVal = invocation.proceedWithInvocation();
 			}
 			catch (Throwable ex) {
+				// 目标调用异常，在异常发生后处理事务，提交还是回滚，取决于具体的配置等
 				// target invocation exception
 				completeTransactionAfterThrowing(txInfo, ex);
 				throw ex;
 			}
 			finally {
+				// 把与线程绑定的TransactionInfo重置为oldTransactionInfo（之前的事务信息）
 				cleanupTransactionInfo(txInfo);
 			}
+			// 提交事务
 			commitTransactionAfterReturning(txInfo);
 			return retVal;
 		}
 
+		// 2.如果事务处理器属于CallbackPreferringPlatformTransactionManager事务管理器
+		// 那就采用回调的方式来处理事务的提交或者回滚
 		else {
 			final ThrowableHolder throwableHolder = new ThrowableHolder();
 
+			// 这是一个CallbackPreferringPlatformTransactionManager：传入一个TransactionCallback。
 			// It's a CallbackPreferringPlatformTransactionManager: pass a TransactionCallback in.
 			try {
 				Object result = ((CallbackPreferringPlatformTransactionManager) tm).execute(txAttr, status -> {
+					// 准备TransactionInfo
 					TransactionInfo txInfo = prepareTransactionInfo(tm, txAttr, joinpointIdentification, status);
 					try {
 						return invocation.proceedWithInvocation();
 					}
 					catch (Throwable ex) {
+						// 如果属于要回滚异常,抛出异常
 						if (txAttr.rollbackOn(ex)) {
+							// 运行时异常，会回滚
 							// A RuntimeException: will lead to a rollback.
 							if (ex instanceof RuntimeException) {
 								throw (RuntimeException) ex;
@@ -327,16 +350,19 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 							}
 						}
 						else {
+							// 正常的返回值，会提交事务
 							// A normal return value: will lead to a commit.
 							throwableHolder.throwable = ex;
 							return null;
 						}
 					}
 					finally {
+						// 把与线程绑定的TransactionInfo重置为oldTransactionInfo（之前的事务信息）
 						cleanupTransactionInfo(txInfo);
 					}
 				});
 
+				//检查结果：如果异常不为null，抛出去
 				// Check result state: It might indicate a Throwable to rethrow.
 				if (throwableHolder.throwable != null) {
 					throw throwableHolder.throwable;
@@ -371,6 +397,7 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 	}
 
 	/**
+	 * 确定要用于指定事务的具体事务管理器
 	 * Determine the specific transaction manager to use for the given transaction.
 	 */
 	@Nullable
@@ -459,8 +486,10 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 	protected TransactionInfo createTransactionIfNecessary(@Nullable PlatformTransactionManager tm,
 			@Nullable TransactionAttribute txAttr, final String joinpointIdentification) {
 
+		// 如果事务属性不为null && 事务名称为null
 		// If no name specified, apply method identification as transaction name.
 		if (txAttr != null && txAttr.getName() == null) {
+			//生成一个事务名称
 			txAttr = new DelegatingTransactionAttribute(txAttr) {
 				@Override
 				public String getName() {
@@ -470,8 +499,11 @@ public abstract class TransactionAspectSupport implements BeanFactoryAware, Init
 		}
 
 		TransactionStatus status = null;
+		//如果事务属性不为null
 		if (txAttr != null) {
+			//事务管理器不为null
 			if (tm != null) {
+				//根据事务属性定义创建事务状态对象
 				status = tm.getTransaction(txAttr);
 			}
 			else {
