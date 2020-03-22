@@ -339,6 +339,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 */
 	@Override
 	public final TransactionStatus getTransaction(@Nullable TransactionDefinition definition) throws TransactionException {
+		// 获取事务，doGetTransaction是个抽象方法， 此方法交由具体的事务管理器实现
 		Object transaction = doGetTransaction();
 
 		// Cache debug flag to avoid repeated checks.

@@ -78,6 +78,11 @@ public abstract class TransactionSynchronizationManager {
 
 	private static final Log logger = LogFactory.getLog(TransactionSynchronizationManager.class);
 
+	/**
+	 * 事务资源
+	 * map:key 资源工厂，如dataSource
+	 * 	   value 资源，如connectionHolder
+	 */
 	private static final ThreadLocal<Map<Object, Object>> resources =
 			new NamedThreadLocal<>("Transactional resources");
 
@@ -130,15 +135,18 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 根据指定key获取当前线程绑定的资源
+	 * 返回一个绑定到当前线程的值，通常是活跃的资源对象
 	 * Retrieve a resource for the given key that is bound to the current thread.
-	 * @param key the key to check (usually the resource factory)
+	 * @param key the key to check (usually the resource factory) 通常是资源工厂，如dataSouce
 	 * @return a value bound to the current thread (usually the active
-	 * resource object), or {@code null} if none
+	 * resource object), or {@code null} if none 绑定到当前线程的值（通常是活跃状态的资源对象）（如connectionHolder）
 	 * @see ResourceTransactionManager#getResourceFactory()
 	 */
 	@Nullable
 	public static Object getResource(Object key) {
 		Object actualKey = TransactionSynchronizationUtils.unwrapResourceIfNecessary(key);
+		//获取资源
 		Object value = doGetResource(actualKey);
 		if (value != null && logger.isTraceEnabled()) {
 			logger.trace("Retrieved value [" + value + "] for key [" + actualKey + "] bound to thread [" +
@@ -149,6 +157,7 @@ public abstract class TransactionSynchronizationManager {
 
 	/**
 	 * 实际检查为给定key(dataSource)绑定的资源的值（如connectionHolder）
+	 * (根据数据源获取当前线程上的连接)
 	 * Actually check the value of the resource that is bound for the given key.
 	 */
 	@Nullable

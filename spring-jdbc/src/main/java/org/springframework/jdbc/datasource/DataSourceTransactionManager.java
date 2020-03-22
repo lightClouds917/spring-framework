@@ -233,10 +233,17 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 		return obtainDataSource();
 	}
 
+	/**
+	 * 获取事务对象
+	 * 创建一个新事务对象，并设置保存点属性和连接句柄资源
+	 * @return
+	 */
 	@Override
 	protected Object doGetTransaction() {
 		DataSourceTransactionObject txObject = new DataSourceTransactionObject();
+		//是否支持保存点
 		txObject.setSavepointAllowed(isNestedTransactionAllowed());
+		//以数据源为key获取当前线程绑定的连接句柄，设置给事务对象
 		ConnectionHolder conHolder =
 				(ConnectionHolder) TransactionSynchronizationManager.getResource(obtainDataSource());
 		txObject.setConnectionHolder(conHolder, false);
@@ -423,13 +430,17 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 
 
 	/**
+	 * DataSource事务对象，代表一个ConnectionHolder，
+	 * 由DataSourceTransactionManager用作事务对象
 	 * DataSource transaction object, representing a ConnectionHolder.
 	 * Used as transaction object by DataSourceTransactionManager.
 	 */
 	private static class DataSourceTransactionObject extends JdbcTransactionObjectSupport {
 
+		/**是否是新的连接句柄*/
 		private boolean newConnectionHolder;
 
+		/**是否必须恢复自动提交状态*/
 		private boolean mustRestoreAutoCommit;
 
 		public void setConnectionHolder(@Nullable ConnectionHolder connectionHolder, boolean newConnectionHolder) {

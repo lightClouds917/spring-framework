@@ -19,8 +19,10 @@ package org.springframework.aop.scope;
 import org.springframework.aop.RawTargetAccess;
 
 /**
+ * 用于范围对象的AOP引入接口。
  * An AOP introduction interface for scoped objects.
  *
+ * 从{@link ScopedProxyFactoryBean}创建的对象可以强制转换为此接口，从而可以访问原始目标对象并以编程方式删除目标对象。
  * <p>Objects created from the {@link ScopedProxyFactoryBean} can be cast
  * to this interface, enabling access to the raw target object
  * and programmatic removal of the target object.
@@ -32,7 +34,10 @@ import org.springframework.aop.RawTargetAccess;
  */
 public interface ScopedObject extends RawTargetAccess {
 
+	//TODO
 	/**
+	 * 以原始格式（存储在目标作用域中）返回此作用域对象代理后面的当前目标对象。
+	 * <p>例如，原始目标对象可以传递给持久性提供程序，后者将无法处理作用域代理对象。
 	 * Return the current target object behind this scoped object proxy,
 	 * in its raw form (as stored in the target scope).
 	 * <p>The raw target object can for example be passed to persistence

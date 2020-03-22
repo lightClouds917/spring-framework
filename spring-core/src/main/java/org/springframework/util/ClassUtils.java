@@ -333,6 +333,8 @@ public abstract class ClassUtils {
 	}
 
 	/**
+	 * 确定是否存在由提供的名称标识的{@link Class}并可以加载。
+	 * 如果该类或其依赖项之一不存在或无法加载，则将返回{@code false}。
 	 * Determine whether the {@link Class} identified by the supplied name is present
 	 * and can be loaded. Will return {@code false} if either the class or
 	 * one of its dependencies is not present or cannot be loaded.
