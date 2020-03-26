@@ -54,6 +54,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	@Nullable
 	private Connection currentConnection;
 
+	/**true:表示此连接代表一个活跃的由JDBC管理的事务*/
 	private boolean transactionActive = false;
 
 	@Nullable
@@ -84,9 +85,12 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	}
 
 	/**
+	 * 用SimpleConnectionHandle包装指定的JDBC连接，创建一个新的ConnectionHolder
+	 *
 	 * Create a new ConnectionHolder for the given JDBC Connection,
 	 * wrapping it with a {@link SimpleConnectionHandle}.
 	 * @param connection the JDBC Connection to hold
+	 * 给定的连接是否涉及正在进行的事务
 	 * @param transactionActive whether the given Connection is involved
 	 * in an ongoing transaction
 	 * @see SimpleConnectionHandle
@@ -114,6 +118,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 
 	/**
 	 * 设置此连接持有者，是否代表一个活跃的，由JDBC管理的事务。
+	 * (DataSourceTransactionManager.doBegin设置为true)
 	 * Set whether this holder represents an active, JDBC-managed transaction.
 	 * @see DataSourceTransactionManager
 	 */

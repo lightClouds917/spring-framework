@@ -83,6 +83,7 @@ import org.springframework.transaction.UnexpectedRollbackException;
 public abstract class AbstractPlatformTransactionManager implements PlatformTransactionManager, Serializable {
 
 	/**
+	 * 始终激活事务同步，即使由于PROPAGATION_SUPPORTS这种传播属性导致的空事务，或者没有后台事务
 	 * Always activate transaction synchronization, even for "empty" transactions
 	 * that result from PROPAGATION_SUPPORTS with no existing backend transaction.
 	 * @see org.springframework.transaction.TransactionDefinition#PROPAGATION_SUPPORTS
@@ -92,6 +93,8 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	public static final int SYNCHRONIZATION_ALWAYS = 0;
 
 	/**
+	 * 仅仅激活实际存在的事务的事务同步
+	 * 这意味着，由PROPAGATION_SUPPORTS这种传播属性导致的空事务或者没有后台事务时，是不激活事务同步的
 	 * Activate transaction synchronization only for actual transactions,
 	 * that is, not for empty ones that result from PROPAGATION_SUPPORTS with
 	 * no existing backend transaction.
@@ -102,17 +105,22 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	public static final int SYNCHRONIZATION_ON_ACTUAL_TRANSACTION = 1;
 
 	/**
+	 * 从不主动激活事务同步，即使是对于实际事务
 	 * Never active transaction synchronization, not even for actual transactions.
 	 */
 	public static final int SYNCHRONIZATION_NEVER = 2;
 
 
-	/** Constants instance for AbstractPlatformTransactionManager. */
+	/**
+	 * AbstractPlatformTransactionManager的常量实例
+	 * Constants instance for AbstractPlatformTransactionManager. */
 	private static final Constants constants = new Constants(AbstractPlatformTransactionManager.class);
 
 
 	protected transient Log logger = LogFactory.getLog(getClass());
 
+	//TODO
+	/**事务同步类型*/
 	private int transactionSynchronization = SYNCHRONIZATION_ALWAYS;
 
 	private int defaultTimeout = TransactionDefinition.TIMEOUT_DEFAULT;
@@ -129,6 +137,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 
 	/**
+	 * 通过此类中相应常量的名称设置事务同步
 	 * Set the transaction synchronization by the name of the corresponding constant
 	 * in this class, e.g. "SYNCHRONIZATION_ALWAYS".
 	 * @param constantName name of the constant
@@ -139,11 +148,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 设置此事务管理器何时激活线程绑定事务同步支持。默认值为always;
+	 * 请注意，不同的事务管理器不支持多个并发事务的事务同步。任何时候都只允许一个事务管理器激活它。
 	 * Set when this transaction manager should activate the thread-bound
 	 * transaction synchronization support. Default is "always".
-	 * <p>Note that transaction synchronization isn't supported for
-	 * multiple concurrent transactions by different transaction managers.
-	 * Only one transaction manager is allowed to activate it at any time.
+	  <p>Note that transaction synchronization isn't supported for
+	  multiple concurrent transactions by different transaction managers.
+	  Only one transaction manager is allowed to activate it at any time.
 	 * @see #SYNCHRONIZATION_ALWAYS
 	 * @see #SYNCHRONIZATION_ON_ACTUAL_TRANSACTION
 	 * @see #SYNCHRONIZATION_NEVER
@@ -339,7 +350,9 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 */
 	@Override
 	public final TransactionStatus getTransaction(@Nullable TransactionDefinition definition) throws TransactionException {
+		// 1.获取事务对象
 		// 获取事务，doGetTransaction是个抽象方法， 此方法交由具体的事务管理器实现
+		// 这里会创建一个新的事务对象，从TransactionSynchronizationManager中获取当前线程持有的数据库连接的句柄,并设置到事务对象中返回
 		Object transaction = doGetTransaction();
 
 		// Cache debug flag to avoid repeated checks.
@@ -347,13 +360,19 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 		if (definition == null) {
 			// Use defaults if no transaction definition given.
+			// 如果传入的事务定义信息对象为空，就创建默认的事务定义，隔离级别，传播属性等信息都为默认值
 			definition = new DefaultTransactionDefinition();
 		}
 
+		// 2.如果事务时一个已存在的事务
+		// 判断依据为：如果事务对象中的连接句柄不为null && 事务对象中的连接句柄处于事务活跃状态 ==>这个事务是一个已经存在的事务
 		if (isExistingTransaction(transaction)) {
+			// 当前线程关联的数据库连接存在且事务处于激活状态，那么当前事务会根据事务传播机制来处理当前事务
 			// Existing transaction found -> check propagation behavior to find out how to behave.
 			return handleExistingTransaction(definition, transaction, debugEnabled);
 		}
+
+		// 3.如果事务是一个新事物
 
 		// Check definition settings for new transaction.
 		if (definition.getTimeout() < TransactionDefinition.TIMEOUT_DEFAULT) {
@@ -397,11 +416,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 给一个已经存在的事务创建事务状态对象 TransactionStatus
 	 * Create a TransactionStatus for an existing transaction.
 	 */
 	private TransactionStatus handleExistingTransaction(
 			TransactionDefinition definition, Object transaction, boolean debugEnabled)
 			throws TransactionException {
+		// 1.处理传播行为
 
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NEVER) {
 			throw new IllegalTransactionStateException(
@@ -412,6 +433,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			if (debugEnabled) {
 				logger.debug("Suspending current transaction");
 			}
+			// 挂起当前事务
 			Object suspendedResources = suspend(transaction);
 			boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
 			return prepareTransactionStatus(
@@ -1057,6 +1079,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	protected abstract Object doGetTransaction() throws TransactionException;
 
 	/**
+	 * 是否是一个已经存在的事务
+	 *
+	 * 检查给定的事务对象是否指向现有事务（即已经开始的事务）
+	 * 将根据新事物的指定传播行为评估结果。
+	 * 现有事务可能会被暂停（对于PROPAGATION_REQUIRES_NEW），或者新事务可能会参与现有事务（对于PROPAGATION_REQUIRED）。
+	 * 默认实现返回false,假定通常不支持参与现有事务。当然，鼓励子类提供此类支持。
+	 *
 	 * Check if the given transaction object indicates an existing transaction
 	 * (that is, a transaction which has already started).
 	 * <p>The result will be evaluated according to the specified propagation

@@ -250,9 +250,17 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 		return txObject;
 	}
 
+	/**
+	 * 判断指定的事务是否是一个已经存在的事务
+	 * 判断依据是：
+	 * 如果事务对象中的连接句柄不为null && 事务连接句柄处于事务活跃状态
+	 * @param transaction
+	 * @return
+	 */
 	@Override
 	protected boolean isExistingTransaction(Object transaction) {
 		DataSourceTransactionObject txObject = (DataSourceTransactionObject) transaction;
+		// 如果事务对象中的连接句柄不为null && 事务对象中的连接句柄处于事务活跃状态，则说明指定事务是一个已经存在的事务
 		return (txObject.hasConnectionHolder() && txObject.getConnectionHolder().isTransactionActive());
 	}
 
@@ -293,7 +301,7 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 			}
 
 			prepareTransactionalConnection(con, definition);
-			//设置事务活跃状态
+			//设置事务活跃状态 设置为true，此连接持有者代表一个活跃的由JDBC管理的事务
 			txObject.getConnectionHolder().setTransactionActive(true);
 
 			int timeout = determineTimeout(definition);
