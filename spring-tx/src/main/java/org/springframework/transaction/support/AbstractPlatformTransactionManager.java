@@ -120,7 +120,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	protected transient Log logger = LogFactory.getLog(getClass());
 
 	//TODO
-	/**事务同步类型*/
+	/**此事务管理器是否应激活线程绑定的事务同步支持。*/
 	private int transactionSynchronization = SYNCHRONIZATION_ALWAYS;
 
 	private int defaultTimeout = TransactionDefinition.TIMEOUT_DEFAULT;
@@ -166,6 +166,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 返回此事务管理器是否应激活线程绑定的事务同步支持。
 	 * Return if this transaction manager should activate the thread-bound
 	 * transaction synchronization support.
 	 */
@@ -215,6 +216,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 设置是否在参与现有事务之前对其进行验证。
+	 * 当参与现有事务时（例如，PROPAGATION_REQUIRES or PROPAGATION_SUPPORTS遇到现有事务），
+	 * 外部事物特征将适用于内部事务范围，校验将检测内部事务定义的不兼容的隔离级别和只读属性，
+	 * 并通过抛出异常来拒绝参与。
+	 * 默认值为false,粗暴的忽略内部事务的设置，简单的用外部事物的特征覆盖内部事务，
+	 * 如果将此标志设置为true,将会执行严格的验证；
+	 *
 	 * Set whether existing transactions should be validated before participating
 	 * in them.
 	 * <p>When participating in an existing transaction (e.g. with
@@ -233,6 +241,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 返回 是否在参与现有事务之前对其进行验证。
 	 * Return whether existing transactions should be validated before participating
 	 * in them.
 	 * @since 2.5.1
@@ -424,11 +433,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			throws TransactionException {
 		// 1.处理传播行为
 
+		// 1.1 PROPAGATION_NEVER 在无事务状态下执行，如果当前有事务，会抛出异常
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NEVER) {
 			throw new IllegalTransactionStateException(
 					"Existing transaction found for transaction marked with propagation 'never'");
 		}
 
+		// 1.2 PROPAGATION_NOT_SUPPORTED 在无事务状态下执行，如果当前有事务，就把当前的事务挂起
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NOT_SUPPORTED) {
 			if (debugEnabled) {
 				logger.debug("Suspending current transaction");
@@ -440,6 +451,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 					definition, null, false, newSynchronization, debugEnabled, suspendedResources);
 		}
 
+		// 1.3 PROPAGATION_REQUIRES_NEW 新建一个事务执行，如果当前有事务，就把当前的事务挂起
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW) {
 			if (debugEnabled) {
 				logger.debug("Suspending current transaction, creating new transaction with name [" +
@@ -460,6 +472,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			}
 		}
 
+		// 1.4 PROPAGATION_NESTED  当前有事务，就新建一个事务，嵌套执行，当前无事务，就新建一个事务执行
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
 			if (!isNestedTransactionAllowed()) {
 				throw new NestedTransactionNotSupportedException(
@@ -495,9 +508,16 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		if (debugEnabled) {
 			logger.debug("Participating in existing transaction");
 		}
+
+		// 2 如果新事物在参与现有事务之前需要对其进行校验
+		// 传播属性支持的情况下，严格校验内外事务的隔离级别，只读属性等是否相同是否支持
 		if (isValidateExistingTransaction()) {
+			// 2.1 校验隔离级别
+			// 如果新事务定义中隔离级别不是默认的事务隔离级别
 			if (definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT) {
+				// 从事务同步管理器中获取当前事务的隔离级别
 				Integer currentIsolationLevel = TransactionSynchronizationManager.getCurrentTransactionIsolationLevel();
+				// 如果当前事务的隔离级别为null 或者 从事务管理器获取的当前事务的隔离级别和新事务定义信息中的隔离级别不相同，会抛出非法事务状态异常
 				if (currentIsolationLevel == null || currentIsolationLevel != definition.getIsolationLevel()) {
 					Constants isoConstants = DefaultTransactionDefinition.constants;
 					throw new IllegalTransactionStateException("Participating transaction with definition [" +
@@ -507,13 +527,17 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 									"(unknown)"));
 				}
 			}
+			// 2.2 校验只读属性
+			// 如果事务定义信息中不是只读
 			if (!definition.isReadOnly()) {
+				// 但是事务管理器获取的只读的，会抛出非法事务状态异常
 				if (TransactionSynchronizationManager.isCurrentTransactionReadOnly()) {
 					throw new IllegalTransactionStateException("Participating transaction with definition [" +
 							definition + "] is not marked as read-only but existing transaction is");
 				}
 			}
 		}
+		// 如果此事务管理器是否应激活线程绑定的事务同步支持 ！= 从不主动激活事务同步，即使是对于实际事务   则newSynchronization=true,反之false
 		boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 		return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);
 	}

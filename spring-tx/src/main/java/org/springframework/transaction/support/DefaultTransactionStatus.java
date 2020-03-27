@@ -66,17 +66,24 @@ public class DefaultTransactionStatus extends AbstractTransactionStatus {
 
 
 	/**
+	 * 创建一个新的默认事务状态实例
+	 *
 	 * Create a new {@code DefaultTransactionStatus} instance.
+	 * 可以为内部事务实现保留状态的基础事务对象
 	 * @param transaction underlying transaction object that can hold state
 	 * for the internal transaction implementation
+	 * 除非事务是新的，否则就参与现有事务
 	 * @param newTransaction if the transaction is new, otherwise participating
 	 * in an existing transaction
+	 * 是否为指定事务开启一个新的事务同步
 	 * @param newSynchronization if a new transaction synchronization has been
 	 * opened for the given transaction
+	 * 事务是否被标记为只读
 	 * @param readOnly whether the transaction is marked as read-only
 	 * @param debug should debug logging be enabled for the handling of this transaction?
 	 * Caching it in here can prevent repeated calls to ask the logging system whether
 	 * debug logging should be enabled.
+	 * 此事务已经被暂挂的资源持有者（如果有）
 	 * @param suspendedResources a holder for resources that have been suspended
 	 * for this transaction, if any
 	 */
