@@ -72,7 +72,7 @@ public class DefaultTransactionStatus extends AbstractTransactionStatus {
 	 * 可以为内部事务实现保留状态的基础事务对象
 	 * @param transaction underlying transaction object that can hold state
 	 * for the internal transaction implementation
-	 * 除非事务是新的，否则就参与现有事务
+	 * 如果事务是新的，就创建一个新事物，否则，参与现有事务
 	 * @param newTransaction if the transaction is new, otherwise participating
 	 * in an existing transaction
 	 * 是否为指定事务开启一个新的事务同步

@@ -543,6 +543,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 为给定的参数创建一个新的TransactionStatus，并根据需要初始化事务同步。
 	 * Create a new TransactionStatus for the given arguments,
 	 * also initializing transaction synchronization as appropriate.
 	 * @see #newTransactionStatus
@@ -552,19 +553,31 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			TransactionDefinition definition, @Nullable Object transaction, boolean newTransaction,
 			boolean newSynchronization, boolean debug, @Nullable Object suspendedResources) {
 
+		// 1.创建新的DefaultTransactionStatus实例
 		DefaultTransactionStatus status = newTransactionStatus(
 				definition, transaction, newTransaction, newSynchronization, debug, suspendedResources);
+		// 2.准备事务同步
 		prepareSynchronization(status, definition);
 		return status;
 	}
 
 	/**
+	 * 为给定的参数创建一个新的TransactionStatus，并根据需要初始化事务同步。
 	 * Create a TransactionStatus instance for the given arguments.
+	 * @param definition 当前事务定义信息
+	 * @param transaction 当前事务对象
+	 * @param newTransaction 是否是新事务
+	 * @param newSynchronization 是否为指定事务开启新的事务同步
+	 * @param debug
+	 * @param suspendedResources 此事务已经被暂挂的资源持有者（如果有）
+	 * @return
 	 */
 	protected DefaultTransactionStatus newTransactionStatus(
 			TransactionDefinition definition, @Nullable Object transaction, boolean newTransaction,
 			boolean newSynchronization, boolean debug, @Nullable Object suspendedResources) {
 
+		// 是否是实际的新的事务同步
+		// 如果是新事务 && 如果当前线程的事务同步不是活跃状态 ===》为指定事务开启一个新的事务同步
 		boolean actualNewSynchronization = newSynchronization &&
 				!TransactionSynchronizationManager.isSynchronizationActive();
 		return new DefaultTransactionStatus(
@@ -578,15 +591,18 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 */
 	protected void prepareSynchronization(DefaultTransactionStatus status, TransactionDefinition definition) {
 		if (status.isNewSynchronization()) {
-			//设置当前是否有实际的活跃事务
+			// 设置当前是否有实际的活跃事务
 			TransactionSynchronizationManager.setActualTransactionActive(status.hasTransaction());
+			// 设置隔离级别 如果定义信息中的隔离级别不是默认的隔离级别，则使用定义信息中的隔离级别，否则为null
 			TransactionSynchronizationManager.setCurrentTransactionIsolationLevel(
 					definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT ?
 							definition.getIsolationLevel() : null);
+			// 只读属性
 			TransactionSynchronizationManager.setCurrentTransactionReadOnly(definition.isReadOnly());
+			// 事务名称
 			TransactionSynchronizationManager.setCurrentTransactionName(definition.getName());
-			//激活当前线程的事务同步 初始化TransactionSynchronizationManager的synchronizations集合
-			//ThreadLocal<Set<TransactionSynchronization>> synchronizations
+			// 激活当前线程的事务同步 初始化TransactionSynchronizationManager的synchronizations集合
+			// ThreadLocal<Set<TransactionSynchronization>> synchronizations
 			TransactionSynchronizationManager.initSynchronization();
 		}
 	}
