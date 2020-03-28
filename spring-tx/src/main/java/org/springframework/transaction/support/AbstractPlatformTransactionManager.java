@@ -446,6 +446,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			}
 			// 挂起当前事务
 			Object suspendedResources = suspend(transaction);
+			// 是否开启新的事务同步
 			boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
 			// 创建事务状态实例+准备事务同步
 			return prepareTransactionStatus(
@@ -460,6 +461,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			}
 			SuspendedResourcesHolder suspendedResources = suspend(transaction);
 			try {
+				// 是否开启新的事务同步
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 				// 创建事务状态实例
 				DefaultTransactionStatus status = newTransactionStatus(
@@ -510,7 +512,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				// Usually only for JTA: Spring synchronization might get activated here
 				// in case of a pre-existing JTA transaction.
 
-				// 如果此事务管理器激活线程绑定的事务同步支持状态 ！= 从不主动激活事务同步，即使是对于实际事务   则newSynchronization=true,反之false
+				// 是否开启新的事务同步
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, null);
@@ -554,7 +556,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				}
 			}
 		}
-		// 如果此事务管理器激活线程绑定的事务同步支持状态 ！= 从不主动激活事务同步，即使是对于实际事务   则newSynchronization=true,反之false
+		// 是否开启新的事务同步
 		boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 		// 创建事务状态实例+准备事务同步
 		return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);
