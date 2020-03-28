@@ -185,6 +185,8 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	}
 
 	/**
+	 * 为当前连接创建一个新的JDBC 3.0保存点。
+	 * 使用生成的保存点名称应该为该连接唯一的
 	 * Create a new JDBC 3.0 Savepoint for the current Connection,
 	 * using generated savepoint names that are unique for the Connection.
 	 * @return the new Savepoint

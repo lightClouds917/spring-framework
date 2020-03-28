@@ -447,6 +447,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			// 挂起当前事务
 			Object suspendedResources = suspend(transaction);
 			boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
+			// 创建事务状态实例+准备事务同步
 			return prepareTransactionStatus(
 					definition, null, false, newSynchronization, debugEnabled, suspendedResources);
 		}
@@ -460,9 +461,11 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			SuspendedResourcesHolder suspendedResources = suspend(transaction);
 			try {
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+				// 创建事务状态实例
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
 				doBegin(transaction, definition);
+				// 初始化事务同步
 				prepareSynchronization(status, definition);
 				return status;
 			}
@@ -482,23 +485,37 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			if (debugEnabled) {
 				logger.debug("Creating nested transaction with name [" + definition.getName() + "]");
 			}
+			// 如果对嵌套事务使用保存点
 			if (useSavepointForNestedTransaction()) {
+
+				// 通过TransactionStatus实现的SavepointManager的api，在已存在的spring管理的事务中创建一个保存点。
+				// 通常使用JDBC3.0的安全点，从不激活spring的同步。
+
 				// Create savepoint within existing Spring-managed transaction,
 				// through the SavepointManager API implemented by TransactionStatus.
 				// Usually uses JDBC 3.0 savepoints. Never activates Spring synchronization.
+
+				// 创建事务状态实例+准备事务同步
 				DefaultTransactionStatus status =
 						prepareTransactionStatus(definition, transaction, false, false, debugEnabled, null);
+				// 创建一个保存点并将其保存在事务中。
 				status.createAndHoldSavepoint();
 				return status;
 			}
+			// 如果不对嵌套事务使用保存点
 			else {
+				// 通过嵌套的 begin and commit/rollback 调用进行的嵌套事务
+				// 通常仅用于JTA：如果有预先存在的JTA事务，则可以在此处激活Spring同步
 				// Nested transaction through nested begin and commit/rollback calls.
 				// Usually only for JTA: Spring synchronization might get activated here
 				// in case of a pre-existing JTA transaction.
+
+				// 如果此事务管理器激活线程绑定的事务同步支持状态 ！= 从不主动激活事务同步，即使是对于实际事务   则newSynchronization=true,反之false
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, null);
 				doBegin(transaction, definition);
+				// 初始化事务同步
 				prepareSynchronization(status, definition);
 				return status;
 			}
@@ -537,8 +554,9 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				}
 			}
 		}
-		// 如果此事务管理器是否应激活线程绑定的事务同步支持 ！= 从不主动激活事务同步，即使是对于实际事务   则newSynchronization=true,反之false
+		// 如果此事务管理器激活线程绑定的事务同步支持状态 ！= 从不主动激活事务同步，即使是对于实际事务   则newSynchronization=true,反之false
 		boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+		// 创建事务状态实例+准备事务同步
 		return prepareTransactionStatus(definition, transaction, false, newSynchronization, debugEnabled, null);
 	}
 
@@ -1145,6 +1163,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 返回是否对嵌套事务使用保存点
+	 * 默认值是true,这会导致委派给DefaultTransactionStatus创建和hold住一个保存点。
+	 * 如果事务对象没有实现SavepointManager接口，将会抛出NestedTransactionNotSupportedException异常，
+	 * 否则，SavepointManager将会创建一个新的保存点以划分嵌套事务的开始。
+	 * 子类可以重写这个方法以返回false,从而可以在已经存在的事务的上下文中进一步调用doBegin方法，
+	 * 这种情况下，doBegin方法需要做相应的处理。
+	 * 例如，这适用于jta
 	 * Return whether to use a savepoint for a nested transaction.
 	 * <p>Default is {@code true}, which causes delegation to DefaultTransactionStatus
 	 * for creating and holding a savepoint. If the transaction object does not implement

@@ -118,6 +118,7 @@ public abstract class AbstractTransactionStatus implements TransactionStatus {
 	//---------------------------------------------------------------------
 
 	/**
+	 * 为该事务设置一个保存点。对PROPAGATION_NESTED有用。
 	 * Set a savepoint for this transaction. Useful for PROPAGATION_NESTED.
 	 * @see org.springframework.transaction.TransactionDefinition#PROPAGATION_NESTED
 	 */
@@ -139,6 +140,7 @@ public abstract class AbstractTransactionStatus implements TransactionStatus {
 	}
 
 	/**
+	 * 创建一个保存点并将其保存在事务中。
 	 * Create a savepoint and hold it for the transaction.
 	 * @throws org.springframework.transaction.NestedTransactionNotSupportedException
 	 * if the underlying transaction does not support savepoints
