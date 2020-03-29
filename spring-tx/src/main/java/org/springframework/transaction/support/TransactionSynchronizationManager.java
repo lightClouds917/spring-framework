@@ -225,8 +225,11 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 从当前线程中取消给定键的资源绑定。
 	 * Unbind a resource for the given key from the current thread.
+	 * 通常是资源工厂 比如数据源dataSource
 	 * @param key the key to unbind (usually the resource factory)
+	 * 通常是活跃的资源对象 比如连接句柄ResourceHolder
 	 * @return the previously bound value (usually the active resource object)
 	 * @throws IllegalStateException if there is no value bound to the thread
 	 * @see ResourceTransactionManager#getResourceFactory()
@@ -253,7 +256,9 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 实质删除给定键绑定的资源
 	 * Actually remove the value of the resource that is bound for the given key.
+	 * @see TransactionSynchronizationManager#bindResource(Object, Object)
 	 */
 	@Nullable
 	private static Object doUnbindResource(Object actualKey) {
@@ -261,13 +266,17 @@ public abstract class TransactionSynchronizationManager {
 		if (map == null) {
 			return null;
 		}
+		// 获取给定key的value
 		Object value = map.remove(actualKey);
+		// 如果为空，则删除整个ThreadLocal
 		// Remove entire ThreadLocal if empty...
 		if (map.isEmpty()) {
 			resources.remove();
 		}
+		// 透明的取消标记为无效的资源持有者ResourceHolder
 		// Transparently suppress a ResourceHolder that was marked as void...
 		if (value instanceof ResourceHolder && ((ResourceHolder) value).isVoid()) {
+			// 如果value是ResourceHolder实例 && 被标记为void，则置为null
 			value = null;
 		}
 		if (value != null && logger.isTraceEnabled()) {

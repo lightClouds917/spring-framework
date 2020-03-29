@@ -350,10 +350,18 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 		}
 	}
 
+	/**
+	 * 挂起事务
+	 * @param transaction transaction object returned by {@code doGetTransaction}
+	 * 返回持有暂挂资源的对象
+	 * @return
+	 */
 	@Override
 	protected Object doSuspend(Object transaction) {
 		DataSourceTransactionObject txObject = (DataSourceTransactionObject) transaction;
+		// 当前数据源事务对象连接句柄置为null
 		txObject.setConnectionHolder(null);
+		// 从当前线程中，取消给定数据源的资源绑定
 		return TransactionSynchronizationManager.unbindResource(obtainDataSource());
 	}
 
