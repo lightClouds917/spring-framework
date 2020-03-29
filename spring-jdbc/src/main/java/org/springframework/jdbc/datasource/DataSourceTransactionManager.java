@@ -275,7 +275,9 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 		Connection con = null;
 
 		try {
-			// 如果连接句柄为空 || 资源持有者与事务同步
+			// 如果这个事务的连接句柄为空
+			// 或者这个事务的资源持有者与事务同步
+			// 都需要从数据源重新获取连接
 			if (!txObject.hasConnectionHolder() ||
 					txObject.getConnectionHolder().isSynchronizedWithTransaction()) {
 				// 从数据源获取新的连接
@@ -294,37 +296,56 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 
 			// 根据连接及事务定义信息，获取连接的原事务隔离级别，并设置给事务对象
 			Integer previousIsolationLevel = DataSourceUtils.prepareConnectionForTransaction(con, definition);
+			// 记录之前的隔离级别
 			txObject.setPreviousIsolationLevel(previousIsolationLevel);
 
+			// 如果有必要，请切换为手动提交。在某些JDBC驱动中，这是非常昂贵的，因此我们不需要不必要的操作
+			//（例如，如果我们已经明确配置了连接池进行设置）
 			// Switch to manual commit if necessary. This is very expensive in some JDBC drivers,
 			// so we don't want to do it unnecessarily (for example if we've explicitly
 			// configured the connection pool to set it already).
+
+			// 如果连接是自动提交
 			if (con.getAutoCommit()) {
+				// 设置数据源事务对象 必须恢复自动提交状态 为true
 				txObject.setMustRestoreAutoCommit(true);
 				if (logger.isDebugEnabled()) {
 					logger.debug("Switching JDBC Connection [" + con + "] to manual commit");
 				}
+				// 把JDBC连接设置为手动提交状态
 				con.setAutoCommit(false);
 			}
 
+			// 准备事务连接（可能会执行设置只读属性的sql：SET TRANSACTION READ ONLY）
+			//TODO
 			prepareTransactionalConnection(con, definition);
-			//设置事务活跃状态 设置为true，此连接持有者代表一个活跃的由JDBC管理的事务
+			// 设置事务活跃状态 设置为true，此连接持有者代表一个活跃的由JDBC管理的事务
 			txObject.getConnectionHolder().setTransactionActive(true);
 
+			// 确定超时时间
+			//TODO
 			int timeout = determineTimeout(definition);
 			if (timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
+				// 如果超时时间不是默认值，设置超时时间到connectionHolder，这里使用，其他地方会使用
 				txObject.getConnectionHolder().setTimeoutInSeconds(timeout);
 			}
 
+			// 将连接句柄绑定到线程
+
 			// Bind the connection holder to the thread.
 			if (txObject.isNewConnectionHolder()) {
+				// 如果是一个新的连接句柄，将连接句柄绑定到当前线程 key:数据源   value:数据源事务对象的连接句柄
+				//TODO
 				TransactionSynchronizationManager.bindResource(obtainDataSource(), txObject.getConnectionHolder());
 			}
 		}
 
 		catch (Throwable ex) {
+			// 如果是新的连接句柄
 			if (txObject.isNewConnectionHolder()) {
+				// 释放从该数据源获取的连接
 				DataSourceUtils.releaseConnection(con, obtainDataSource());
+				// 重置连接句柄
 				txObject.setConnectionHolder(null, false);
 			}
 			throw new CannotCreateTransactionException("Could not open JDBC Connection for transaction", ex);
