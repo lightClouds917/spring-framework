@@ -323,7 +323,6 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 			txObject.getConnectionHolder().setTransactionActive(true);
 
 			// 确定超时时间
-			//TODO
 			int timeout = determineTimeout(definition);
 			if (timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
 				// 如果超时时间不是默认值，设置超时时间到connectionHolder，这里使用，其他地方会使用
@@ -335,7 +334,6 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 			// Bind the connection holder to the thread.
 			if (txObject.isNewConnectionHolder()) {
 				// 如果是一个新的连接句柄，将连接句柄绑定到当前线程 key:数据源   value:数据源事务对象的连接句柄
-				//TODO
 				TransactionSynchronizationManager.bindResource(obtainDataSource(), txObject.getConnectionHolder());
 			}
 		}

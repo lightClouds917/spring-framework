@@ -127,6 +127,11 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 	private boolean nestedTransactionAllowed = false;
 
+	/**
+	 * 新事物在参与现有事务之前是否需要对其进行校验
+	 * 如果需要，则会严格的验证隔离级别，只读属性等
+	 * handleExistingTransaction中会使用到
+	 */
 	private boolean validateExistingTransaction = false;
 
 	private boolean globalRollbackOnParticipationFailure = true;
@@ -373,7 +378,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			definition = new DefaultTransactionDefinition();
 		}
 
-		// 2.如果事务时一个已存在的事务
+		// 2.如果事务是一个已存在的事务
 		// 判断依据为：如果事务对象中的连接句柄不为null && 事务对象中的连接句柄处于事务活跃状态 ==>这个事务是一个已经存在的事务
 		if (isExistingTransaction(transaction)) {
 			// 当前线程关联的数据库连接存在且事务处于激活状态，那么当前事务会根据事务传播机制来处理当前事务
@@ -381,30 +386,41 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			return handleExistingTransaction(definition, transaction, debugEnabled);
 		}
 
-		// 3.如果事务是一个新事物
+		// 3.事务是一个新事物
 
+		// 3.1 校验超时时间
 		// Check definition settings for new transaction.
 		if (definition.getTimeout() < TransactionDefinition.TIMEOUT_DEFAULT) {
 			throw new InvalidTimeoutException("Invalid transaction timeout", definition.getTimeout());
 		}
 
+		// 3.2 处理传播属性
 		// No existing transaction found -> check propagation behavior to find out how to proceed.
+		// PROPAGATION_MANDATORY     当前有事务，就加入事务，没有就抛出异常
 		if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_MANDATORY) {
 			throw new IllegalTransactionStateException(
 					"No existing transaction found for transaction marked with propagation 'mandatory'");
 		}
+		// PROPAGATION_REQUIRED      当前有事务，就加入这个事务，没有事务，就新建一个事务
+		// PROPAGATION_REQUIRES_NEW  新建一个事务执行，如果当前有事务，就把当前的事务挂起
+		// PROPAGATION_NESTED        当前有事务，就嵌套执行，当前无事务，就新建一个事务执行
 		else if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRED ||
 				definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW ||
 				definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
+			// 由于当前无事务，所以，上面三种传播属性，都没有需要暂挂的事务
 			SuspendedResourcesHolder suspendedResources = suspend(null);
 			if (debugEnabled) {
 				logger.debug("Creating new transaction with name [" + definition.getName() + "]: " + definition);
 			}
 			try {
+				// 返回此事务管理器是否应激活线程绑定事务同步支持
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+				// 由于当前无事务，所以，上面三种传播属性，都是需要创建一个新的事务
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+				// 开启事务
 				doBegin(transaction, definition);
+				// 初始化事务同步
 				prepareSynchronization(status, definition);
 				return status;
 			}
@@ -414,12 +430,15 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			}
 		}
 		else {
+			// 创建一个空事务：没有真实的事务，但是可能需要同步
 			// Create "empty" transaction: no actual transaction, but potentially synchronization.
 			if (definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT && logger.isWarnEnabled()) {
 				logger.warn("Custom isolation level specified but no actual transaction initiated; " +
 						"isolation level will effectively be ignored: " + definition);
 			}
+			// 返回此事务管理器是否应激活线程绑定事务同步支持
 			boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
+			// 创建新的DefaultTransactionStatus实例，并准备事务同步
 			return prepareTransactionStatus(definition, null, true, newSynchronization, debugEnabled, null);
 		}
 	}
@@ -466,6 +485,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				// 创建事务状态实例
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+				// 开启事务
 				doBegin(transaction, definition);
 				// 初始化事务同步
 				prepareSynchronization(status, definition);
@@ -514,8 +534,10 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 				// 是否开启新的事务同步
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+				// 创建一个新的TransactionStatus
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, null);
+				// 开启事务
 				doBegin(transaction, definition);
 				// 初始化事务同步
 				prepareSynchronization(status, definition);
