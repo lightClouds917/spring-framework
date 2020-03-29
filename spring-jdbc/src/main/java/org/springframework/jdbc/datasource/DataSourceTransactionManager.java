@@ -211,6 +211,7 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 	}
 
 	/**
+	 * 返回是否通过对事务连接的显式语句强制执行事务的只读性质
 	 * Return whether to enforce the read-only nature of a transaction
 	 * through an explicit statement on the transactional connection.
 	 * @since 4.3.7
@@ -317,7 +318,6 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 			}
 
 			// 准备事务连接（可能会执行设置只读属性的sql：SET TRANSACTION READ ONLY）
-			//TODO
 			prepareTransactionalConnection(con, definition);
 			// 设置事务活跃状态 设置为true，此连接持有者代表一个活跃的由JDBC管理的事务
 			txObject.getConnectionHolder().setTransactionActive(true);
@@ -437,6 +437,14 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 
 
 	/**
+	 * 准备事务连接
+	 *
+	 * 事务开始后立即准备事务连接。
+	 * 如果将{@link #setEnforceReadOnly "enforceReadOnly"}标志设置为true，并且事务定义指示为只读事务，
+	 * 则将默认实现将执行"SET TRANSACTION READ ONLY"语句。
+	 *  Oracle，MySQL和Postgres可以理解“ SET TRANSACTION READ ON”（只读），并且也可以与其他数据库一起使用。
+	 * 如果你想采用这种处理方法，请相应的重写此方法。
+	 *
 	 * Prepare the transactional {@code Connection} right after transaction begin.
 	 * <p>The default implementation executes a "SET TRANSACTION READ ONLY" statement
 	 * if the {@link #setEnforceReadOnly "enforceReadOnly"} flag is set to {@code true}
@@ -453,9 +461,11 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 	protected void prepareTransactionalConnection(Connection con, TransactionDefinition definition)
 			throws SQLException {
 
+		// 如果强制只读&&事务定义信息为只读
 		if (isEnforceReadOnly() && definition.isReadOnly()) {
 			Statement stmt = con.createStatement();
 			try {
+				// 执行语句，设置事务为只读：SET TRANSACTION READ ONLY
 				stmt.executeUpdate("SET TRANSACTION READ ONLY");
 			}
 			finally {

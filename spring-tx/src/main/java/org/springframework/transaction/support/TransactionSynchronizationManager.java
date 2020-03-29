@@ -182,26 +182,38 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 使用给定的键将给定的资源绑定到当前线程
+	 *
 	 * Bind the given resource for the given key to the current thread.
+	 * 键 通常是资源工厂,比如数据源 DruidDataSourceWrapper
 	 * @param key the key to bind the value to (usually the resource factory)
+	 * 值 通常是活跃的资源对象，比如连接句柄 connectionHolder
 	 * @param value the value to bind (usually the active resource object)
+	 * 如果已经有绑定到线程的值,抛出异常
 	 * @throws IllegalStateException if there is already a value bound to the thread
 	 * @see ResourceTransactionManager#getResourceFactory()
 	 */
 	public static void bindResource(Object key, Object value) throws IllegalStateException {
+		// unwrap资源 比如DefaultSqlSessionFactory对象，内部拿的有数据源信息
 		Object actualKey = TransactionSynchronizationUtils.unwrapResourceIfNecessary(key);
 		Assert.notNull(value, "Value must not be null");
+		// map可能为eg:<DruidDataSourceWrapper,ConnectionHolder>
 		Map<Object, Object> map = resources.get();
+		// 如果找不到，则初始化一下
 		// set ThreadLocal Map if none found
 		if (map == null) {
 			map = new HashMap<>();
 			resources.set(map);
 		}
+		// map.put(数据源，连接句柄) 返回旧的连接句柄oldValue eg:map.put(DefaultSqlSessionFactory,SqlSessionHolder)
 		Object oldValue = map.put(actualKey, value);
+		// 透明的取消标记为无效的资源持有者ResourceHolder
 		// Transparently suppress a ResourceHolder that was marked as void...
 		if (oldValue instanceof ResourceHolder && ((ResourceHolder) oldValue).isVoid()) {
+			// 如果oldValue是ResourceHolder实例 && 被标记为void，则置为null
 			oldValue = null;
 		}
+		// 如果旧的连接句柄不为null，说明以此数据源为key，连接句柄为值早已经绑定到了当前线程，抛出异常
 		if (oldValue != null) {
 			throw new IllegalStateException("Already value [" + oldValue + "] for key [" +
 					actualKey + "] bound to thread [" + Thread.currentThread().getName() + "]");
