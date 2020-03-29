@@ -667,24 +667,36 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 
 	/**
+	 挂起事务
+	 * （挂起事务，其实就是把当前线程中绑定的事务相关信息，都保存到SuspendedResourcesHolder中返回，后面要用时，根据这个存储的暂挂资源信息，来恢复被挂起的事务。
+	 * 然后清空当前线程中的事务对象，方便其他事务写进来）
+	 * 挂起指定的事务，首先暂停事务同步，然后委托给doSuspend模板方法
+	 * 当事务对象为null,如果当前有活跃的同步，就挂起当前活跃的同步
 	 * Suspend the given transaction. Suspends transaction synchronization first,
 	 * then delegates to the {@code doSuspend} template method.
 	 * @param transaction the current transaction object
 	 * (or {@code null} to just suspend active synchronizations, if any)
+	 * 回持有挂起资源的对象
 	 * @return an object that holds suspended resources
+	 * 如果事务和同步都没有激活，就返回null
 	 * (or {@code null} if neither transaction nor synchronization active)
 	 * @see #doSuspend
 	 * @see #resume
 	 */
 	@Nullable
 	protected final SuspendedResourcesHolder suspend(@Nullable Object transaction) throws TransactionException {
+		// 如果当前线程事务同步是活跃状态
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			// 暂停当前的所有同步，并禁用当前线程的事务同步 返回挂起事务同步的对象列表
 			List<TransactionSynchronization> suspendedSynchronizations = doSuspendSynchronization();
 			try {
 				Object suspendedResources = null;
+				// 如果传入事务不为null
 				if (transaction != null) {
+					// 挂起当前事务资源，返回暂挂资源对象
 					suspendedResources = doSuspend(transaction);
 				}
+				// 重置事务同步管理器的数据
 				String name = TransactionSynchronizationManager.getCurrentTransactionName();
 				TransactionSynchronizationManager.setCurrentTransactionName(null);
 				boolean readOnly = TransactionSynchronizationManager.isCurrentTransactionReadOnly();
@@ -695,9 +707,11 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				boolean wasActive = TransactionSynchronizationManager.isActualTransactionActive();
 				//设置当前是否有实际的活跃事务 false
 				TransactionSynchronizationManager.setActualTransactionActive(false);
+				// 返回持有暂挂资源的对象
 				return new SuspendedResourcesHolder(
 						suspendedResources, suspendedSynchronizations, name, readOnly, isolationLevel, wasActive);
 			}
+			// 如果挂起失败，就利用前面返回的挂起事务对象列表来恢复同步
 			catch (RuntimeException | Error ex) {
 				// doSuspend failed - original transaction is still active...
 				doResumeSynchronization(suspendedSynchronizations);
@@ -705,11 +719,14 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			}
 		}
 		else if (transaction != null) {
+			// 如果线程事务同步未激活，但事务处于活跃状态，挂起当前事务资源，返回暂挂资源对象
 			// Transaction active but no synchronization active.
 			Object suspendedResources = doSuspend(transaction);
+			// 返回持有暂挂资源的对象
 			return new SuspendedResourcesHolder(suspendedResources);
 		}
 		else {
+			// 如果事务和同步均未激活，返回null
 			// Neither transaction nor synchronization active.
 			return null;
 		}
