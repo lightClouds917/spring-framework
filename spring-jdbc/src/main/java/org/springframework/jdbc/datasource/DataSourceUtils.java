@@ -164,10 +164,13 @@ public abstract class DataSourceUtils {
 	}
 
 	/**
+	 * 为事务准备连接
+	 *
+	 * 使用给定的事务语义准备给定的connection
 	 * Prepare the given Connection with the given transaction semantics.
-	 * @param con the Connection to prepare
-	 * @param definition the transaction definition to apply
-	 * @return the previous isolation level, if any
+	 * @param con the Connection to prepare 数据库连接
+	 * @param definition the transaction definition to apply 事务的定义信息
+	 * @return the previous isolation level, if any 先前的隔离级别（如果有）
 	 * @throws SQLException if thrown by JDBC methods
 	 * @see #resetConnectionAfterTransaction
 	 */
@@ -178,41 +181,55 @@ public abstract class DataSourceUtils {
 		Assert.notNull(con, "No Connection specified");
 
 		// Set read-only flag.
+		// 1 设置只读属性
+		// 如果事务定义信息不为空 && 事务定义信息设置为只读   -->需要把连接设置为只读属性
 		if (definition != null && definition.isReadOnly()) {
 			try {
 				if (logger.isDebugEnabled()) {
 					logger.debug("Setting JDBC Connection [" + con + "] read-only");
 				}
+				// 设置连接为只读
 				con.setReadOnly(true);
 			}
 			catch (SQLException | RuntimeException ex) {
 				Throwable exToCheck = ex;
 				while (exToCheck != null) {
 					if (exToCheck.getClass().getSimpleName().contains("Timeout")) {
+						//假设这是一个连接超时，否则将丢失：从JDBC4.0开始
 						// Assume it's a connection timeout that would otherwise get lost: e.g. from JDBC 4.0
 						throw ex;
 					}
 					exToCheck = exToCheck.getCause();
 				}
+				// 不支持只读” UnsupportedOperationException->忽略，它只是一个提示
 				// "read-only not supported" SQLException -> ignore, it's just a hint anyway
 				logger.debug("Could not set JDBC Connection read-only", ex);
 			}
 		}
 
+		// 2 设置隔离级别
 		// Apply specific isolation level, if any.
 		Integer previousIsolationLevel = null;
+		// 如果事务定义信息不为空 && 事务定义的隔离级别不是默认的隔离级别  --->修改连接的隔离级别为事务定义的隔离级别，并返回连接先前的隔离级别
 		if (definition != null && definition.getIsolationLevel() != TransactionDefinition.ISOLATION_DEFAULT) {
 			if (logger.isDebugEnabled()) {
 				logger.debug("Changing isolation level of JDBC Connection [" + con + "] to " +
 						definition.getIsolationLevel());
 			}
+			// 修改JDBC连接的隔离级别为事务定义的隔离级别
+
+			// 获取当前连接的隔离级别
 			int currentIsolation = con.getTransactionIsolation();
+			// 如果当前连接的隔离级别 != 事务定义信息的隔离级别
 			if (currentIsolation != definition.getIsolationLevel()) {
+				// 把当前连接的隔离级别赋值给 previousIsolationLevel 变量记录着
 				previousIsolationLevel = currentIsolation;
+				// 把当前连接的隔离级别设置为事务定义信息的隔离级别
 				con.setTransactionIsolation(definition.getIsolationLevel());
 			}
 		}
 
+		// 返回连接的原隔离级别
 		return previousIsolationLevel;
 	}
 

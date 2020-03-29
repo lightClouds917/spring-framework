@@ -1192,6 +1192,12 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 根据给定的事务定义，开始一个新事务。不必关心应用传播行为，因为此抽象管理器已经处理了它。
+	 *
+	 * <p>当事务管理器决定实际开始新事务时，将调用此方法。之前没有任何事务，或者先前的事务已被暂停。
+	 * <p>一种特殊情况是没有保存点的嵌套事务：
+	 * 如果{@code useSavepointForNestedTransaction（）}返回“ false”，则在必要时将调用此方法以启动嵌套事务。
+	 * 在这种情况下，将有一个活动事务：此方法的实现必须检测到此情况并启动适当的嵌套事务。
 	 * Begin a new transaction with semantics according to the given transaction
 	 * definition. Does not have to care about applying the propagation behavior,
 	 * as this has already been handled by this abstract manager.
@@ -1203,7 +1209,9 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 * will be called to start a nested transaction when necessary. In such a context,
 	 * there will be an active transaction: The implementation of this method has
 	 * to detect this and start an appropriate nested transaction.
+	 * 返回的事务对象
 	 * @param transaction transaction object returned by {@code doGetTransaction}
+	 * TransactionDefinition实例，描述传播属性，隔离级别，只读属性，超时，事务名称等信息
 	 * @param definition a TransactionDefinition instance, describing propagation
 	 * behavior, isolation level, read-only flag, timeout, and transaction name
 	 * @throws TransactionException in case of creation or system errors

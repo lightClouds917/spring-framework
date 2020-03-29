@@ -265,27 +265,34 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 	}
 
 	/**
+	 * 此实现设置隔离级别，但是忽略超时时间。
 	 * This implementation sets the isolation level but ignores the timeout.
 	 */
 	@Override
 	protected void doBegin(Object transaction, TransactionDefinition definition) {
+		// 事务对象转换为DataSourceTransactionObject
 		DataSourceTransactionObject txObject = (DataSourceTransactionObject) transaction;
 		Connection con = null;
 
 		try {
+			// 如果连接句柄为空 || 资源持有者与事务同步
 			if (!txObject.hasConnectionHolder() ||
 					txObject.getConnectionHolder().isSynchronizedWithTransaction()) {
+				// 从数据源获取新的连接
 				Connection newCon = obtainDataSource().getConnection();
 				if (logger.isDebugEnabled()) {
 					logger.debug("Acquired Connection [" + newCon + "] for JDBC transaction");
 				}
+				// 用新的连接创建新的连接句柄，设置给DataSourceTransactionObject，并标记为新的连接句柄
 				txObject.setConnectionHolder(new ConnectionHolder(newCon), true);
 			}
 
-			//设置连接资源 与事务同步
+			// 设置连接句柄,将资源标记为与事务同步
 			txObject.getConnectionHolder().setSynchronizedWithTransaction(true);
+			// 从连接句柄获取连接
 			con = txObject.getConnectionHolder().getConnection();
 
+			// 根据连接及事务定义信息，获取连接的原事务隔离级别，并设置给事务对象
 			Integer previousIsolationLevel = DataSourceUtils.prepareConnectionForTransaction(con, definition);
 			txObject.setPreviousIsolationLevel(previousIsolationLevel);
 
