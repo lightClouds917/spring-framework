@@ -33,6 +33,24 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
+ * 事务同步管理器
+ *
+ * 用于管理每个线程的资源和事务同步，由资源管理代码而不是典型的应用程序代码使用。
+ *
+ * 每个key支持一个资源而不会被覆盖，也就是说，需要先删除这个资源才能在相同的key上设置一个新资源；
+ *
+ * 资源管理器应当检查线程绑定资源，例如JDBC连接或者Hibernate会话，通过getResource方式。
+ * 此类代码通常不应当将资源绑定到线程，因为这是事务管理器的责任。
+ * 另一个选择是，如果事务同步处于活跃状态，则在首次使用时延迟绑定，以执行跨越任意数量资源的事务。
+ *
+ * 事务同步必须由事务管理器通过initSynchronization和clearSynchronization进行激活和停用。
+ *
+ * 源管理器代码仅应当在此事务管理器处于活跃状态时注册同步，可以通过isSynchronizationActive进行检查；
+ * 否则，它应当立即执行资源清理。
+ * 如果事务同步未处于活跃状态，则说明当前没有事务，或者事务管理器不支持事务同步；
+ *
+ * 同步用于这样的场景，例如 在JTA事务中始终返回相同的资源，例如任意给定DataSource或SessionFactory的JDBC连接或Hibernate会话。
+ *
  * Central delegate that manages resources and transaction synchronizations per thread.
  * To be used by resource management code but not by typical application code.
  *
@@ -90,12 +108,15 @@ public abstract class TransactionSynchronizationManager {
 	private static final ThreadLocal<Set<TransactionSynchronization>> synchronizations =
 			new NamedThreadLocal<>("Transaction synchronizations");
 
+	/**当前事务名称*/
 	private static final ThreadLocal<String> currentTransactionName =
 			new NamedThreadLocal<>("Current transaction name");
 
+	/**当前事务只读状态*/
 	private static final ThreadLocal<Boolean> currentTransactionReadOnly =
 			new NamedThreadLocal<>("Current transaction read-only status");
 
+	/**当前事务隔离级别*/
 	private static final ThreadLocal<Integer> currentTransactionIsolationLevel =
 			new NamedThreadLocal<>("Current transaction isolation level");
 
@@ -105,10 +126,16 @@ public abstract class TransactionSynchronizationManager {
 
 
 	//-------------------------------------------------------------------------
+	// 与事务相关的资源句柄的管理
 	// Management of transaction-associated resource handles
 	//-------------------------------------------------------------------------
 
 	/**
+	 * 返回绑定到当前线程的所有资源。
+	 * 主要用于调试的目的。
+	 * 资源管理器应始终为他们感兴趣的特定资源键调用{@code hasResource}方法；
+	 * 返回具有资源键（通常是资源工厂）和资源值（通常是活动的资源对象）的Map,或者返回空。
+	 * （datasource,connectionholder）
 	 * Return all resources that are bound to the current thread.
 	 * <p>Mainly for debugging purposes. Resource managers should always invoke
 	 * {@code hasResource} for a specific resource key that they are interested in.
@@ -123,12 +150,16 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 检查给定键是否有资源绑定到当前线程
 	 * Check if there is a resource for the given key bound to the current thread.
+	 * 通常是资源工厂，比如dataSource
 	 * @param key the key to check (usually the resource factory)
+	 * 是否有值绑定到当前线程
 	 * @return if there is a value bound to the current thread
 	 * @see ResourceTransactionManager#getResourceFactory()
 	 */
 	public static boolean hasResource(Object key) {
+		// 如果有必要，unwrap给定的资源句柄，否则原样返回给定的句柄；
 		Object actualKey = TransactionSynchronizationUtils.unwrapResourceIfNecessary(key);
 		Object value = doGetResource(actualKey);
 		return (value != null);
