@@ -832,7 +832,9 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		//ThreadLocal<Set<TransactionSynchronization>> synchronizations
 		TransactionSynchronizationManager.initSynchronization();
 		for (TransactionSynchronization synchronization : suspendedSynchronizations) {
+			// 恢复资源：将资源重新绑定到TransactionSynchronizationManager
 			synchronization.resume();
+			// 恢复同步：注册此同步，将此同步添加到TransactionSynchronizationManager的synchronizations集合
 			TransactionSynchronizationManager.registerSynchronization(synchronization);
 		}
 	}
