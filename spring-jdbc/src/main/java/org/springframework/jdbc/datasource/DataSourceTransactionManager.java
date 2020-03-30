@@ -365,6 +365,15 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 		return TransactionSynchronizationManager.unbindResource(obtainDataSource());
 	}
 
+	/**
+	 * 恢复
+	 *
+	 * {@code doGetTransaction}返回的事务对象
+	 * @param transaction transaction object returned by {@code doGetTransaction}
+	 * 持有暂挂资源的对象，由doSuspend返回
+	 * @param suspendedResources the object that holds suspended resources,
+	 * as returned by doSuspend
+	 */
 	@Override
 	protected void doResume(@Nullable Object transaction, Object suspendedResources) {
 		TransactionSynchronizationManager.bindResource(obtainDataSource(), suspendedResources);

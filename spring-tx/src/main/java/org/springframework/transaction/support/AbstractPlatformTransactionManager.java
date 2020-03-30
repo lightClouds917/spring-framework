@@ -498,6 +498,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				return status;
 			}
 			catch (RuntimeException | Error beginEx) {
+				// 出现异常，内部事务开启失败后，恢复外部事务
 				resumeAfterBeginException(transaction, suspendedResources, beginEx);
 				throw beginEx;
 			}
@@ -744,9 +745,12 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 恢复指定的事务，先委派给doResume处理，然后恢复事务同步
 	 * Resume the given transaction. Delegates to the {@code doResume}
 	 * template method first, then resuming transaction synchronization.
+	 * 当前事务对象
 	 * @param transaction the current transaction object
+	 * 由suspend方法返回的持有暂挂资源的对象，或者为null，如果有需要，用此对象恢复同步
 	 * @param resourcesHolder the object that holds suspended resources,
 	 * as returned by {@code suspend} (or {@code null} to just
 	 * resume synchronizations, if any)
@@ -756,24 +760,31 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	protected final void resume(@Nullable Object transaction, @Nullable SuspendedResourcesHolder resourcesHolder)
 			throws TransactionException {
 
+		// 如果持有暂挂资源的对象不为null
 		if (resourcesHolder != null) {
+			// 获取暂挂资源
 			Object suspendedResources = resourcesHolder.suspendedResources;
 			if (suspendedResources != null) {
+				// 如果暂挂资源不为null,用事务对象和暂挂资源信息去恢复资源，恢复同步
 				doResume(transaction, suspendedResources);
 			}
+			// 获取暂停的同步
 			List<TransactionSynchronization> suspendedSynchronizations = resourcesHolder.suspendedSynchronizations;
 			if (suspendedSynchronizations != null) {
+				// 重置同步信息
 				//设置当前是否有实际的活跃事务
 				TransactionSynchronizationManager.setActualTransactionActive(resourcesHolder.wasActive);
 				TransactionSynchronizationManager.setCurrentTransactionIsolationLevel(resourcesHolder.isolationLevel);
 				TransactionSynchronizationManager.setCurrentTransactionReadOnly(resourcesHolder.readOnly);
 				TransactionSynchronizationManager.setCurrentTransactionName(resourcesHolder.name);
+				// 重新激活当前线程的事务同步，并且恢复所有指定的同步
 				doResumeSynchronization(suspendedSynchronizations);
 			}
 		}
 	}
 
 	/**
+	 * 内部事务开始失败后恢复外部事务。
 	 * Resume outer transaction after inner transaction begin failed.
 	 */
 	private void resumeAfterBeginException(
@@ -781,6 +792,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 		String exMessage = "Inner transaction begin exception overridden by outer transaction resume exception";
 		try {
+			// 恢复事务，并且恢复事务同步
 			resume(transaction, suspendedResources);
 		}
 		catch (RuntimeException | Error resumeEx) {
@@ -1307,11 +1319,17 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 恢复当前事务的资源，随后事务同步也会恢复
 	 * Resume the resources of the current transaction.
 	 * Transaction synchronization will be resumed afterwards.
+	 *
+	 * 假定通常不支持事务挂起，则默认实现将引发TransactionSuspensionNotSupportedException异常。
 	 * <p>The default implementation throws a TransactionSuspensionNotSupportedException,
-	 * assuming that transaction suspension is generally not supported.
+	  assuming that transaction suspension is generally not supported.
+	 *
+	 * {@code doGetTransaction}返回的事务对象
 	 * @param transaction transaction object returned by {@code doGetTransaction}
+	 * 持有暂挂资源的对象，由doSuspend返回
 	 * @param suspendedResources the object that holds suspended resources,
 	 * as returned by doSuspend
 	 * @throws org.springframework.transaction.TransactionSuspensionNotSupportedException
