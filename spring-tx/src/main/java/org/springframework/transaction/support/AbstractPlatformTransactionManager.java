@@ -446,6 +446,12 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	/**
 	 * 给一个已经存在的事务创建事务状态对象 TransactionStatus
 	 * Create a TransactionStatus for an existing transaction.
+	 *
+	 * @param definition 事务定义信息
+	 * @param transaction getTransaction()返回的事务对象
+	 * @param debugEnabled
+	 * @return
+	 * @throws TransactionException
 	 */
 	private TransactionStatus handleExistingTransaction(
 			TransactionDefinition definition, Object transaction, boolean debugEnabled)
@@ -667,15 +673,18 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 
 	/**
-	 挂起事务
-	 * （挂起事务，其实就是把当前线程中绑定的事务相关信息，都保存到SuspendedResourcesHolder中返回，后面要用时，根据这个存储的暂挂资源信息，来恢复被挂起的事务。
+	 * 挂起事务
+	 * （挂起事务，其实就是把当前线程中绑定的事务相关信息，都保存到SuspendedResourcesHolder中返回，
+	 * 后面要用时，根据这个存储的暂挂资源信息，来恢复被挂起的事务。
 	 * 然后清空当前线程中的事务对象，方便其他事务写进来）
 	 * 挂起指定的事务，首先暂停事务同步，然后委托给doSuspend模板方法
 	 * 当事务对象为null,如果当前有活跃的同步，就挂起当前活跃的同步
 	 * Suspend the given transaction. Suspends transaction synchronization first,
 	 * then delegates to the {@code doSuspend} template method.
+	 *
+	 * 前事务对象（或{@code null}仅暂停活动同步，如果有的话）
 	 * @param transaction the current transaction object
-	 * (or {@code null} to just suspend active synchronizations, if any)
+	  (or {@code null} to just suspend active synchronizations, if any)
 	 * 回持有挂起资源的对象
 	 * @return an object that holds suspended resources
 	 * 如果事务和同步都没有激活，就返回null
@@ -687,16 +696,17 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	protected final SuspendedResourcesHolder suspend(@Nullable Object transaction) throws TransactionException {
 		// 如果当前线程事务同步是活跃状态
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {
-			// 暂停当前的所有同步，并禁用当前线程的事务同步 返回挂起事务同步的对象列表
+			// 暂停当前的所有同步，并禁用当前线程的事务同步 返回挂起事务同步的对象列表        要暂挂的事务同步（同步）
 			List<TransactionSynchronization> suspendedSynchronizations = doSuspendSynchronization();
 			try {
 				Object suspendedResources = null;
 				// 如果传入事务不为null
 				if (transaction != null) {
-					// 挂起当前事务资源，返回暂挂资源对象
+					// 挂起当前事务资源，返回暂挂资源对象（比如resourceHoler，连接句柄）	  要暂挂的资源（资源）
 					suspendedResources = doSuspend(transaction);
 				}
 				// 重置事务同步管理器的数据
+				// 获取当前事务同步管理器中当前事物的名称，只读属性，隔离级别，是否有实际的活跃事务等信息，赋值给暂挂资源持有对象，然后重置     要暂挂的一些状态和属性（状态属性）
 				String name = TransactionSynchronizationManager.getCurrentTransactionName();
 				TransactionSynchronizationManager.setCurrentTransactionName(null);
 				boolean readOnly = TransactionSynchronizationManager.isCurrentTransactionReadOnly();
@@ -720,6 +730,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		}
 		else if (transaction != null) {
 			// 如果线程事务同步未激活，但事务处于活跃状态，挂起当前事务资源，返回暂挂资源对象
+			// 事务同步未激活，所以就不用从事务同步管理器中获取相关属性值
 			// Transaction active but no synchronization active.
 			Object suspendedResources = doSuspend(transaction);
 			// 返回持有暂挂资源的对象
@@ -779,8 +790,12 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 挂起所有当前同步，并停用当前线程的事务同步。
+	 *
 	 * Suspend all current synchronizations and deactivate transaction
 	 * synchronization for the current thread.
+	 *
+	 * 挂起的TransactionSynchronization对象的列表
 	 * @return the List of suspended TransactionSynchronization objects
 	 */
 	private List<TransactionSynchronization> doSuspendSynchronization() {
@@ -1154,6 +1169,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	//---------------------------------------------------------------------
 
 	/**
+	 * 返回当前事务状态的事务对象。
+	 * 返回的对象通常将特定于具体的事务管理器实现，以可修改的方式携带对应的事务状态。
+	 * 该对象将直接或作为DefaultTransactionStatus实例的一部分传递给其他模板方法（例如boBegin或者doCommit).
+	 * 返回的对象应该包含有关任何现有事务的信息，即，在事务管理器上调用doGetTransaction之前已经开始的事务。
+	 *
+	 * 因此，doGetTransaction的实现通常将查找现有事务并将对应的状态存储在返回的事务对象中。
+	 *
 	 * Return a transaction object for the current transaction state.
 	 * <p>The returned object will usually be specific to the concrete transaction
 	 * manager implementation, carrying corresponding transaction state in a
@@ -1166,7 +1188,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 * Consequently, a {@code doGetTransaction} implementation will usually
 	 * look for an existing transaction and store corresponding state in the
 	 * returned transaction object.
-	 * @return the current transaction object
+	 * @return the current transaction object 当前事务对象
 	 * @throws org.springframework.transaction.CannotCreateTransactionException
 	 * if transaction support is not available
 	 * @throws TransactionException in case of lookup or system errors
@@ -1263,12 +1285,15 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	/**
 	 * 挂起当前事务的资源
 	 * 事务同步已经暂停
+	 * 默认实现会抛出TransactionSuspensionNotSupportedException，假定通常不支持事务挂起
+	 *
 	 * Suspend the resources of the current transaction.
 	 * Transaction synchronization will already have been suspended.
 	 * <p>The default implementation throws a TransactionSuspensionNotSupportedException,
 	 * assuming that transaction suspension is generally not supported.
 	 * @param transaction transaction object returned by {@code doGetTransaction}
-	 * 返回持有暂挂资源的对象
+	 *
+	 * 返回持有暂挂资源的对象（将其传递给doResume不会被检查）
 	 * @return an object that holds suspended resources
 	 * (will be kept unexamined for passing it into doResume)
 	 * @throws org.springframework.transaction.TransactionSuspensionNotSupportedException
@@ -1430,25 +1455,31 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 
 	/**
+	 * 暂挂资源的持有者
 	 * Holder for suspended resources.
 	 * Used internally by {@code suspend} and {@code resume}.
 	 */
 	protected static final class SuspendedResourcesHolder {
 
+		/**暂挂的资源,比如ResouceHolder，连接句柄*/
 		@Nullable
 		private final Object suspendedResources;
 
+		/**暂挂的事务同步器*/
 		@Nullable
 		private List<TransactionSynchronization> suspendedSynchronizations;
 
 		@Nullable
 		private String name;
 
+		/**只读属性*/
 		private boolean readOnly;
 
+		/**隔离级别*/
 		@Nullable
 		private Integer isolationLevel;
 
+		/**是否激活*/
 		private boolean wasActive;
 
 		private SuspendedResourcesHolder(Object suspendedResources) {

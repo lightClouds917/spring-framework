@@ -17,15 +17,20 @@
 package org.springframework.transaction.support;
 
 import java.io.Flushable;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
+ * 事物回调的同步接口，由AbstractPlatformTransactionManager支持；
  * Interface for transaction synchronization callbacks.
  * Supported by AbstractPlatformTransactionManager.
  *
+ * TransactionSynchronization的实现可以实现Ordered接口来影响其执行顺序，未实现Ordered接口的同步会被附加到同步链的尾部；
  * <p>TransactionSynchronization implementations can implement the Ordered interface
  * to influence their execution order. A synchronization that does not implement the
  * Ordered interface is appended to the end of the synchronization chain.
  *
+ * Spring本身执行的系统同步使用特定的顺序值，允许与其执行顺序进行细粒度的交互（如有有必要）；
  * <p>System synchronizations performed by Spring itself use specific order values,
  * allowing for fine-grained interaction with their execution order (if necessary).
  *
@@ -37,9 +42,11 @@ import java.io.Flushable;
  */
 public interface TransactionSynchronization extends Flushable {
 
+	//正确提交时的完成状态
 	/** Completion status in case of proper commit. */
 	int STATUS_COMMITTED = 0;
 
+	//回滚正确时的完成状态
 	/** Completion status in case of proper rollback. */
 	int STATUS_ROLLED_BACK = 1;
 
@@ -48,6 +55,8 @@ public interface TransactionSynchronization extends Flushable {
 
 
 	/**
+	 * 暂停此同步
+	 * 如果管理资源，应该取消与TransactionSynchronizationManager的资源绑定；
 	 * Suspend this synchronization.
 	 * Supposed to unbind resources from TransactionSynchronizationManager if managing any.
 	 * @see TransactionSynchronizationManager#unbindResource
@@ -56,6 +65,8 @@ public interface TransactionSynchronization extends Flushable {
 	}
 
 	/**
+	 * 恢复此同步
+	 * 如果管理资源，则应将资源重新绑定到TransactionSynchronizationManager;
 	 * Resume this synchronization.
 	 * Supposed to rebind resources to TransactionSynchronizationManager if managing any.
 	 * @see TransactionSynchronizationManager#bindResource
@@ -64,6 +75,7 @@ public interface TransactionSynchronization extends Flushable {
 	}
 
 	/**
+	 * 将底层会话刷新到数据存储区；
 	 * Flush the underlying session to the datastore, if applicable:
 	 * for example, a Hibernate/JPA session.
 	 * @see org.springframework.transaction.TransactionStatus#flush()
@@ -73,6 +85,8 @@ public interface TransactionSynchronization extends Flushable {
 	}
 
 	/**
+	 * 在事务提交前执行；
+	 * 这个回调的发生不意味着事务一定会被提交，这个方法被调用后，仍然有可能发生回滚；
 	 * Invoked before transaction commit (before "beforeCompletion").
 	 * Can e.g. flush transactional O/R Mapping sessions to the database.
 	 * <p>This callback does <i>not</i> mean that the transaction will actually be committed.
@@ -90,6 +104,10 @@ public interface TransactionSynchronization extends Flushable {
 	}
 
 	/**
+	 * 在事务提交/回滚之前调用。
+	 * 可以在事务完成之前执行资源清理。
+	 * <p>即使{@code beforeCommit}引发异常，此方法也会在{@code beforeCommit}之后调用。
+	 * 对于任何结果，此回调都允许在事务完成之前关闭资源。
 	 * Invoked before transaction commit/rollback.
 	 * Can perform resource cleanup <i>before</i> transaction completion.
 	 * <p>This method will be invoked after {@code beforeCommit}, even when
@@ -104,6 +122,16 @@ public interface TransactionSynchronization extends Flushable {
 	}
 
 	/**
+	 * 事务提交后调用。
+	 * 可以在事主要务成功提交后立即执行进一步的操作。
+	 * <p>例如提交应该在成功提交主要事务后执行的其他操作，例如确认消息或电子邮件。
+	 *
+	 * <b>注意：</ b>事务将已经提交，但是事务资源可能仍处于活动状态并且可以访问。
+	 * 结果，此时触发的任何数据访问代码仍将“参与”原始事务，从而允许执行一些清除操作（不再执行任何提交！），
+	 * 除非它明确声明需要在单独的事务中运行。
+	 *
+	 * 因此：<b>对于从此处调用的任何事务操作，请使用{@code PROPAGATION_REQUIRES_NEW}。
+	 *
 	 * Invoked after transaction commit. Can perform further operations right
 	 * <i>after</i> the main transaction has <i>successfully</i> committed.
 	 * <p>Can e.g. commit further operations that are supposed to follow on a successful
@@ -122,6 +150,14 @@ public interface TransactionSynchronization extends Flushable {
 	}
 
 	/**
+	 * 在事务提交/回滚后调用。
+	 * 可以在事务完成后执行资源清理。
+	 *
+	 * 注意：事务将已经提交或回滚，但是事务资源可能仍处于活动状态并且可以访问。
+	 * 结果，此时触发的任何数据访问代码仍将“参与”原始事务，从而允许执行一些清除操作（不再执行任何提交！），除非它明确声明需要在单独的事务中运行。
+	 *
+	 * 因此：<b>对于从此处调用的任何事务操作，请使用{@code PROPAGATION_REQUIRES_NEW}。
+	 *
 	 * Invoked after transaction commit/rollback.
 	 * Can perform resource cleanup <i>after</i> transaction completion.
 	 * <p><b>NOTE:</b> The transaction will have been committed or rolled back already,

@@ -340,6 +340,7 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 返回当前线程中所有已经注册的同步的不可变快照集合
 	 * Return an unmodifiable snapshot list of all registered synchronizations
 	 * for the current thread.
 	 * @return unmodifiable List of TransactionSynchronization instances
@@ -354,10 +355,12 @@ public abstract class TransactionSynchronizationManager {
 		// Return unmodifiable snapshot, to avoid ConcurrentModificationExceptions
 		// while iterating and invoking synchronization callbacks that in turn
 		// might register further synchronizations.
+		// 返回不可修改的快照，以避免在迭代和调用可能进一步注册同步的同步回调时发生ConcurrentModificationExceptions
 		if (synchs.isEmpty()) {
 			return Collections.emptyList();
 		}
 		else {
+			// 在这里懒惰地排序，而不是在registerSynchronization中
 			// Sort lazily here, not in registerSynchronization.
 			List<TransactionSynchronization> sortedSynchs = new ArrayList<>(synchs);
 			AnnotationAwareOrderComparator.sort(sortedSynchs);
@@ -366,6 +369,7 @@ public abstract class TransactionSynchronizationManager {
 	}
 
 	/**
+	 * 停用当前线程的事务同步，由事务管理器在事务清理中调用
 	 * Deactivate transaction synchronization for the current thread.
 	 * Called by the transaction manager on transaction cleanup.
 	 * @throws IllegalStateException if synchronization is not active
