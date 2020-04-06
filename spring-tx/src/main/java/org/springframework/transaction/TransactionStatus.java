@@ -19,6 +19,13 @@ package org.springframework.transaction;
 import java.io.Flushable;
 
 /**
+ * 事务状态信息。
+ *
+ * 事务代码可以使用它来查找事务状态信息，并以编程方式请求回滚（而不是引发导致隐式回滚的异常）
+ *
+ * 包括{@link SavepointManager}接口，以提供对保存点管理工具的访问。
+ * 请注意，只有在基础事务管理器支持使用保存点的情况下，保存点管理才可用。
+ *
  * Representation of the status of a transaction.
  *
  * <p>Transactional code can use this to retrieve status information,
@@ -39,6 +46,8 @@ import java.io.Flushable;
 public interface TransactionStatus extends SavepointManager, Flushable {
 
 	/**
+	 * 返回当前事务是否为新事务；否则将参与现有事务
+	 *
 	 * Return whether the present transaction is new; otherwise participating
 	 * in an existing transaction, or potentially not running in an actual
 	 * transaction in the first place.
@@ -78,6 +87,10 @@ public interface TransactionStatus extends SavepointManager, Flushable {
 	boolean isRollbackOnly();
 
 	/**
+	 * 如果适用，将基础会话刷新到数据存储区：例如，所有受影响的Hibernate / JPA会话。
+	 * <p>这实际上只是一个提示，如果基础事务管理器没有冲刷概念，则可能是不做任何事情。
+	 * 根据底层资源，刷新信号可能会应用于主要资源或事务同步。
+	 *
 	 * Flush the underlying session to the datastore, if applicable:
 	 * for example, all affected Hibernate/JPA sessions.
 	 * <p>This is effectively just a hint and may be a no-op if the underlying
@@ -89,6 +102,8 @@ public interface TransactionStatus extends SavepointManager, Flushable {
 	void flush();
 
 	/**
+	 * 返回这个事务是否完成，不管是已经提交了还是已经回滚了。
+	 *
 	 * Return whether this transaction is completed, that is,
 	 * whether it has already been committed or rolled back.
 	 * @see PlatformTransactionManager#commit

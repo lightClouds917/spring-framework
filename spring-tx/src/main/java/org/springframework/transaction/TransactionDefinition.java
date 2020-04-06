@@ -21,6 +21,14 @@ import java.sql.Connection;
 import org.springframework.lang.Nullable;
 
 /**
+ * 事务定义信息接口
+ * 主要有以下几个方面：
+ * 1.事务传播属性
+ * 2.事务隔离级别
+ * 3.事务只读属性
+ * 4.事务超时
+ * 5.事务名称
+ *
  * Interface that defines Spring-compliant transaction properties.
  * Based on the propagation behavior definitions analogous to EJB CMT attributes.
  *
