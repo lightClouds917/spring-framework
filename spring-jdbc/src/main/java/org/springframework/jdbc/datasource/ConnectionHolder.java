@@ -25,6 +25,11 @@ import org.springframework.transaction.support.ResourceHolderSupport;
 import org.springframework.util.Assert;
 
 /**
+ * 包装了JDBC Connection的资源持有者；
+ * 为了特定的DataSource，DataSourceTransactionManager绑定此类的实例到线程。
+ * 此类从基类继承了对嵌套事务的仅回滚支持和引用计数功能；
+ * 这是SPI类，不适合应用程序使用。
+ *
  * Resource holder wrapping a JDBC {@link Connection}.
  * {@link DataSourceTransactionManager} binds instances of this class
  * to the thread, for a specific {@link javax.sql.DataSource}.
@@ -42,24 +47,28 @@ import org.springframework.util.Assert;
 public class ConnectionHolder extends ResourceHolderSupport {
 
 	/**
+	 * 保存点前缀
 	 * Prefix for savepoint names.
 	 */
 	public static final String SAVEPOINT_NAME_PREFIX = "SAVEPOINT_";
 
 
-	/**连接句柄*/
+	/**JDBC连接句柄*/
 	@Nullable
 	private ConnectionHandle connectionHandle;
 
+	/**当前连接*/
 	@Nullable
 	private Connection currentConnection;
 
 	/**true:表示此连接代表一个活跃的由JDBC管理的事务*/
 	private boolean transactionActive = false;
 
+	/**是否支持保存点*/
 	@Nullable
 	private Boolean savepointsSupported;
 
+	/**保存点计数器*/
 	private int savepointCounter = 0;
 
 
@@ -73,6 +82,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	}
 
 	/**
+	 * 假定没有正在进行的事务，用SimpleConnectionHandle包装指定的JDBC连接，创建一个新的ConnectionHolder；
 	 * Create a new ConnectionHolder for the given JDBC Connection,
 	 * wrapping it with a {@link SimpleConnectionHandle},
 	 * assuming that there is no ongoing transaction.
