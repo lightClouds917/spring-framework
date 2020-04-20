@@ -143,7 +143,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class TransactionProxyFactoryBean extends AbstractSingletonProxyFactoryBean
 		implements BeanFactoryAware {
 
-	/**事务拦截器*/
+	/**事务拦截器,通过这个事务拦截器，Spring封装了事务处理实现*/
 	private final TransactionInterceptor transactionInterceptor = new TransactionInterceptor();
 
 	@Nullable
@@ -168,6 +168,8 @@ public class TransactionProxyFactoryBean extends AbstractSingletonProxyFactoryBe
 	 * 例如key=“ myMethod”，value=“ PROPAGATION_REQUIRED，readOnly”。
 	 * 注意：方法名称始终应用于目标类，无论是在接口中定义还是在类本身中定义。
 	 * 内部，将根据给定的属性创建一个NameMatchTransactionAttributeSource。
+	 *
+	 * 以Properties的形式封装通过依赖注入的事务属性
 	 *
 	 * Set properties with method names as keys and transaction attribute
 	 * descriptors (parsed via TransactionAttributeEditor) as values:
@@ -229,15 +231,18 @@ public class TransactionProxyFactoryBean extends AbstractSingletonProxyFactoryBe
 
 
 	/**
+	 * 为此FactoryBean的TransactionInterceptor创建一个通知器
 	 * Creates an advisor for this FactoryBean's TransactionInterceptor.
 	 */
 	@Override
 	protected Object createMainInterceptor() {
 		this.transactionInterceptor.afterPropertiesSet();
 		if (this.pointcut != null) {
+			//如果pointcut不为null,使用默认的通知器DefaultPointcutAdvisor，并配置事务拦截器
 			return new DefaultPointcutAdvisor(this.pointcut, this.transactionInterceptor);
 		}
 		else {
+			//如果没有配置pointcut,使用TransactionAttributeSourceAdvisor作为通知器，并设置事务拦截器
 			// Rely on default pointcut.
 			return new TransactionAttributeSourceAdvisor(this.transactionInterceptor);
 		}
