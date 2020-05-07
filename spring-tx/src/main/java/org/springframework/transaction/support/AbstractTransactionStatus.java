@@ -64,6 +64,8 @@ public abstract class AbstractTransactionStatus implements TransactionStatus {
 	}
 
 	/**
+	 * 通过检查此TransactionStatus的本地仅回滚标志和底层事务的全局仅回滚标志（如果有）来确定仅回滚标志。
+	 *
 	 * Determine the rollback-only flag via checking both the local rollback-only flag
 	 * of this TransactionStatus and the global rollback-only flag of the underlying
 	 * transaction, if any.
@@ -76,6 +78,9 @@ public abstract class AbstractTransactionStatus implements TransactionStatus {
 	}
 
 	/**
+	 * 通过检查此TransactionStatus确定仅回滚标志。
+	 * <p>如果在此TransactionStatus对象上调用{@code setRollbackOnly}的应用程序，则只会返回“ true”。
+	 *
 	 * Determine the rollback-only flag via checking this TransactionStatus.
 	 * <p>Will only return "true" if the application called {@code setRollbackOnly}
 	 * on this TransactionStatus object.
@@ -85,6 +90,7 @@ public abstract class AbstractTransactionStatus implements TransactionStatus {
 	}
 
 	/**
+	 * 用于确定底层事务的仅全局回滚标志的模板方法（如果有）
 	 * Template method for determining the global rollback-only flag of the
 	 * underlying transaction, if any.
 	 * <p>This implementation always returns {@code false}.
@@ -150,17 +156,24 @@ public abstract class AbstractTransactionStatus implements TransactionStatus {
 	}
 
 	/**
+	 * 回滚到为事务处理保存的保存点，然后立即释放该保存点。
+	 *
 	 * Roll back to the savepoint that is held for the transaction
 	 * and release the savepoint right afterwards.
 	 */
 	public void rollbackToHeldSavepoint() throws TransactionException {
+		// 获取该事务的保存点
 		Object savepoint = getSavepoint();
 		if (savepoint == null) {
 			throw new TransactionUsageException(
 					"Cannot roll back to savepoint - no savepoint associated with current transaction");
 		}
+
+		// 回滚之保存点
 		getSavepointManager().rollbackToSavepoint(savepoint);
+		// 释放保存点
 		getSavepointManager().releaseSavepoint(savepoint);
+		// 重置事务的保存点为null
 		setSavepoint(null);
 	}
 

@@ -28,6 +28,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 
 /**
+ * 适用于FactoryBean类型的便捷超类，他们产生单例作用域的代理对象。
+ * 管理前置和后置拦截器，并提供一致的接口管理。
+ *
  * Convenient superclass for {@link FactoryBean} types that produce singleton-scoped
  * proxy objects.
  *
@@ -41,7 +44,8 @@ import org.springframework.util.ClassUtils;
 @SuppressWarnings("serial")
 public abstract class AbstractSingletonProxyFactoryBean extends ProxyConfig
 		implements FactoryBean<Object>, BeanClassLoaderAware, InitializingBean {
-
+//	https://www.jianshu.com/p/a26a19462b74
+//	https://www.jianshu.com/p/754eea00ccce
 	@Nullable
 	private Object target;
 
@@ -149,17 +153,21 @@ public abstract class AbstractSingletonProxyFactoryBean extends ProxyConfig
 			this.proxyClassLoader = ClassUtils.getDefaultClassLoader();
 		}
 
+		//创建一个proxyFactory对象
 		ProxyFactory proxyFactory = new ProxyFactory();
 
+		//设置代理工厂proxyFactory要产生的代理的前置通知
 		if (this.preInterceptors != null) {
 			for (Object interceptor : this.preInterceptors) {
 				proxyFactory.addAdvisor(this.advisorAdapterRegistry.wrap(interceptor));
 			}
 		}
 
+		//添加一个通知，createMainInterceptor是一个抽象方法，由子类实现
 		// Add the main interceptor (typically an Advisor).
 		proxyFactory.addAdvisor(this.advisorAdapterRegistry.wrap(createMainInterceptor()));
 
+		//设置代理工厂proxyFactory要产生的代理的后置通知
 		if (this.postInterceptors != null) {
 			for (Object interceptor : this.postInterceptors) {
 				proxyFactory.addAdvisor(this.advisorAdapterRegistry.wrap(interceptor));
@@ -182,8 +190,10 @@ public abstract class AbstractSingletonProxyFactoryBean extends ProxyConfig
 			}
 		}
 
+		//钩子方法，在使用{@link ProxyFactory} 创建代理实例之前对其进行后处理。
 		postProcessProxyFactory(proxyFactory);
 
+		//获取代理对象
 		this.proxy = proxyFactory.getProxy(this.proxyClassLoader);
 	}
 
@@ -203,6 +213,7 @@ public abstract class AbstractSingletonProxyFactoryBean extends ProxyConfig
 	}
 
 	/**
+	 * 子类的钩子，用于在使用{@link ProxyFactory} 创建代理实例之前对其进行后处理。
 	 * A hook for subclasses to post-process the {@link ProxyFactory}
 	 * before creating the proxy instance with it.
 	 * @param proxyFactory the AOP ProxyFactory about to be used

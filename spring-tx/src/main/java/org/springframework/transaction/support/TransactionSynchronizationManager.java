@@ -410,6 +410,7 @@ public abstract class TransactionSynchronizationManager {
 			throw new IllegalStateException("Cannot deactivate transaction synchronization - not active");
 		}
 		logger.trace("Clearing transaction synchronization");
+		// 清理事务同步
 		synchronizations.remove();
 	}
 
