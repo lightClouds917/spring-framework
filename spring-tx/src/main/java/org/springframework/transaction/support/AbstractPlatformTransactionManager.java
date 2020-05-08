@@ -870,14 +870,17 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			if (defStatus.isDebug()) {
 				logger.debug("Transactional code has requested rollback");
 			}
+			//如果回滚
 			processRollback(defStatus, false);
 			return;
 		}
 
+		// 全局事务标记为仅回滚时不应该commit && 全局标记为仅回滚
 		if (!shouldCommitOnGlobalRollbackOnly() && defStatus.isGlobalRollbackOnly()) {
 			if (defStatus.isDebug()) {
 				logger.debug("Global transaction is marked as rollback-only but transactional code requested commit");
 			}
+			//如理回滚
 			processRollback(defStatus, true);
 			return;
 		}
@@ -1379,6 +1382,21 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 全局事务标记为仅回滚时是否应该commit
+	 *
+	 * 返回是否以全局方式在已标记为仅回滚的事务上调用{@code doCommit}。
+	 *
+	 * <p>如果应用程序通过TransactionStatus在本地将事务设置为仅回滚，则不适用，而仅适用于事务本身被事务协调器标记为仅回滚的事务。
+	 *
+	 * <p>默认值为“ false”：本地事务策略通常不在事务本身中包含仅回滚标记，因此它们不能在事务提交过程中处理仅回滚事务。
+	 * 因此，在这种情况下，AbstractPlatformTransactionManager将触发回滚，此后引发UnexpectedRollbackException。
+	 *
+	 * <p>如果具体的事务管理器期望{@code doCommit}调用（即使是仅回滚的事务），也可以重写此方法以返回“ true”，从而允许在那里进行特殊处理。
+	 * 例如，对于JTA就是这种情况，其中{@code UserTransaction.commit}将检查只读标志本身，并引发相应的RollbackException，其中可能包括特定原因（例如事务超时）。
+	 *
+	 * <p>如果此方法返回“ true”，但是{@code doCommit}实现未引发异常，则此事务管理器本身将引发UnexpectedRollbackException。这不应该是典型的情况。
+	 * 它主要用于检查行为异常的JTA提供程序，即使调用代码未请求回滚，它们也会以静默方式回滚。
+	 *
 	 * Return whether to call {@code doCommit} on a transaction that has been
 	 * marked as rollback-only in a global fashion.
 	 * <p>Does not apply if an application locally sets the transaction to rollback-only

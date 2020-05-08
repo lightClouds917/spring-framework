@@ -133,6 +133,7 @@ public class DefaultTransactionStatus extends AbstractTransactionStatus {
 	}
 
 	/**
+	 * 此事务是否定义为只读属性
 	 * Return if this transaction is defined as read-only transaction.
 	 */
 	public boolean isReadOnly() {
@@ -149,6 +150,7 @@ public class DefaultTransactionStatus extends AbstractTransactionStatus {
 	}
 
 	/**
+	 * 返回此事务暂挂资源的持有者
 	 * Return the holder for resources that have been suspended for this transaction,
 	 * if any.
 	 */
@@ -159,10 +161,15 @@ public class DefaultTransactionStatus extends AbstractTransactionStatus {
 
 
 	//---------------------------------------------------------------------
+	//通过底层事务对象启用功能
 	// Enable functionality through underlying transaction object
 	//---------------------------------------------------------------------
 
 	/**
+	 *  返回是否全局仅回滚
+	 *
+	 * 如果事务对象实现了{@link SmartTransactionObject}接口，则通过检查事务对象来确定仅回滚标志。
+	 * <p>如果全局事务本身已被事务协调器标记为仅回滚，例如在超时的情况下，将返回{@code true}。
 	 * Determine the rollback-only flag via checking the transaction object, provided
 	 * that the latter implements the {@link SmartTransactionObject} interface.
 	 * <p>Will return {@code true} if the global transaction itself has been marked
