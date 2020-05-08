@@ -91,6 +91,7 @@ public abstract class TransactionSynchronizationUtils {
 	}
 
 	/**
+	 * 在所有当前已注册的同步上触发{@code beforeCommit}回调。
 	 * Trigger {@code beforeCommit} callbacks on all currently registered synchronizations.
 	 * @param readOnly whether the transaction is defined as read-only transaction
 	 * @throws RuntimeException if thrown by a {@code beforeCommit} callback

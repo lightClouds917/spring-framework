@@ -348,6 +348,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 是否提交失败时回滚
 	 * Return whether {@code doRollback} should be performed on failure of the
 	 * {@code doCommit} call.
 	 */
@@ -889,6 +890,8 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 处理实际的事务提交
+	 * 仅回滚标记已经检查过了
 	 * Process an actual commit.
 	 * Rollback-only flags have already been checked and applied.
 	 * @param status object representing the transaction
@@ -899,30 +902,46 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			boolean beforeCompletionInvoked = false;
 
 			try {
+				//是否有意外的回滚
 				boolean unexpectedRollback = false;
+				//准备提交
 				prepareForCommit(status);
+				//触发beforeCommit回调
 				triggerBeforeCommit(status);
+				//触发beforeCompletion回调
 				triggerBeforeCompletion(status);
 				beforeCompletionInvoked = true;
 
+				//如果事务有保存点
 				if (status.hasSavepoint()) {
 					if (status.isDebug()) {
 						logger.debug("Releasing transaction savepoint");
 					}
+					//设置unexpectedRollback状态
+					//如果全局仅回滚，则设置unexpectedRollback=true，否则为false
 					unexpectedRollback = status.isGlobalRollbackOnly();
+					//释放掉该事务保存点
 					status.releaseHeldSavepoint();
 				}
+				//如果有实际的事务处于活跃状态
 				else if (status.isNewTransaction()) {
 					if (status.isDebug()) {
 						logger.debug("Initiating transaction commit");
 					}
+					//设置unexpectedRollback状态
+					//如果全局仅回滚，则设置unexpectedRollback=true，否则为false
 					unexpectedRollback = status.isGlobalRollbackOnly();
+					//提交事务
 					doCommit(status);
 				}
+				//如果设置了 事务全局标记为仅回滚的情况下尽早失败
 				else if (isFailEarlyOnGlobalRollbackOnly()) {
+					//设置unexpectedRollback状态
+					//如果全局仅回滚，则设置unexpectedRollback=true，否则为false
 					unexpectedRollback = status.isGlobalRollbackOnly();
 				}
 
+				// 如果我们有一个仅全局回滚的标记，但仍未从提交中获得相应的异常，则抛出UnexpectedRollbackException。
 				// Throw UnexpectedRollbackException if we have a global rollback-only
 				// marker but still didn't get a corresponding exception from commit.
 				if (unexpectedRollback) {
@@ -931,13 +950,16 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				}
 			}
 			catch (UnexpectedRollbackException ex) {
+				//触发afterCompletion回调，仅仅会被commit调用此方法
 				// can only be caused by doCommit
 				triggerAfterCompletion(status, TransactionSynchronization.STATUS_ROLLED_BACK);
 				throw ex;
 			}
 			catch (TransactionException ex) {
 				// can only be caused by doCommit
+				// 如果标记为 提交失败时回滚
 				if (isRollbackOnCommitFailure()) {
+					//TODO
 					doRollbackOnCommitException(status, ex);
 				}
 				else {
@@ -1100,6 +1122,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 
 	/**
+	 * 触发{@code beforeCommit}回调
 	 * Trigger {@code beforeCommit} callbacks.
 	 * @param status object representing the transaction
 	 */
@@ -1113,6 +1136,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 触发{@code beforeCompletion}回调
 	 * Trigger {@code beforeCompletion} callbacks.
 	 * @param status object representing the transaction
 	 */
@@ -1139,6 +1163,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 触发{@code afterCompletion}回调
 	 * Trigger {@code afterCompletion} callbacks.
 	 * @param status object representing the transaction
 	 * @param completionStatus completion status according to TransactionSynchronization constants
@@ -1430,6 +1455,9 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 准备进行提交，以在{@code beforeCommit}同步回调发生之前执行。
+	 * <p>请注意，异常将传播到提交调用者，并导致事务回滚。
+	 *
 	 * Make preparations for commit, to be performed before the
 	 * {@code beforeCommit} synchronization callbacks occur.
 	 * <p>Note that exceptions will get propagated to the commit caller
