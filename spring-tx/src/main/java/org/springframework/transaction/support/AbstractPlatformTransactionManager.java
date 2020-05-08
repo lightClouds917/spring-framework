@@ -134,11 +134,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 */
 	private boolean validateExistingTransaction = false;
 
+	/**参与事务失败后是否将现有事务全局标记为仅回滚*/
 	private boolean globalRollbackOnParticipationFailure = true;
 
 	/**在事务全局标记为仅回滚的情况下是否尽早失败*/
 	private boolean failEarlyOnGlobalRollbackOnly = false;
 
+	/**提交失败时回滚*/
 	private boolean rollbackOnCommitFailure = false;
 
 
@@ -293,6 +295,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 返回参与事务失败后是否将现有事务全局标记为仅回滚。
 	 * Return whether to globally mark an existing transaction as rollback-only
 	 * after a participating transaction failed.
 	 */
@@ -1006,6 +1009,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 					// 回滚该事务至保存点
 					status.rollbackToHeldSavepoint();
 				}
+				// 如果该事务是个新事务
 				else if (status.isNewTransaction()) {
 					if (status.isDebug()) {
 						logger.debug("Initiating transaction rollback");
@@ -1015,13 +1019,14 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				}
 				else {
 					// Participating in larger transaction
-					//TODO
+					// 如果有活跃的事务存在
 					if (status.hasTransaction()) {
+						// 如果事务状态为设置为 仅回滚 || 参与事务失败后将现有事务全局标记为仅回滚
 						if (status.isLocalRollbackOnly() || isGlobalRollbackOnParticipationFailure()) {
 							if (status.isDebug()) {
 								logger.debug("Participating transaction failed - marking existing transaction as rollback-only");
 							}
-							//TODO
+							//设置事务状态为仅回滚
 							doSetRollbackOnly(status);
 						}
 						else {
