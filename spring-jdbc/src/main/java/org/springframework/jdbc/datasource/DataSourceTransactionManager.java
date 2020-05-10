@@ -277,7 +277,7 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 
 		try {
 			// 如果这个事务的连接句柄为空
-			// 或者这个事务的资源持有者与事务同步
+			// 或者这个事务的连接句柄不为空但是这个事务的资源持有者与事务同步（已经存在事务）TODO
 			// 都需要从数据源重新获取连接
 			if (!txObject.hasConnectionHolder() ||
 					txObject.getConnectionHolder().isSynchronizedWithTransaction()) {
@@ -290,7 +290,10 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 				txObject.setConnectionHolder(new ConnectionHolder(newCon), true);
 			}
 
-			// 设置连接句柄,将资源标记为与事务同步
+			//走到这里，意味着这个事务对象的连接持有者现在是新的了
+
+
+			// 设置连接句柄,将资源标记为与当前事务对象同步
 			txObject.getConnectionHolder().setSynchronizedWithTransaction(true);
 			// 从连接句柄获取连接
 			con = txObject.getConnectionHolder().getConnection();
@@ -516,7 +519,9 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 	 */
 	private static class DataSourceTransactionObject extends JdbcTransactionObjectSupport {
 
-		/**是否是新的连接句柄*/
+		/**是否是新的连接句柄
+		 * @see DataSourceTransactionManager#doBegin(Object, TransactionDefinition)
+		 * */
 		private boolean newConnectionHolder;
 
 		/**是否必须恢复自动提交状态*/

@@ -125,6 +125,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 	private int defaultTimeout = TransactionDefinition.TIMEOUT_DEFAULT;
 
+	/**是否支持嵌套事务*/
 	private boolean nestedTransactionAllowed = false;
 
 	/**
@@ -152,6 +153,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 * @see #SYNCHRONIZATION_ALWAYS
 	 */
 	public final void setTransactionSynchronizationName(String constantName) {
+		//TODO WHY?
 		setTransactionSynchronization(constants.asNumber(constantName).intValue());
 	}
 
@@ -362,6 +364,8 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	//---------------------------------------------------------------------
 
 	/**
+	 * 此实现处理传播行为。
+	 *
 	 * This implementation handles propagation behavior. Delegates to
 	 * {@code doGetTransaction}, {@code isExistingTransaction}
 	 * and {@code doBegin}.
@@ -374,6 +378,8 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		// 1.获取事务对象
 		// 获取事务，doGetTransaction是个抽象方法， 此方法交由具体的事务管理器实现
 		// 这里会创建一个新的事务对象，从TransactionSynchronizationManager中获取当前线程持有的数据库连接的句柄,并设置到事务对象中返回
+		//  TODO 解释
+		// 如果是最开始的事务，这个句柄是会为null的，如果是内层事务，则会复用连接
 		Object transaction = doGetTransaction();
 
 		// Cache debug flag to avoid repeated checks.
@@ -420,7 +426,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				logger.debug("Creating new transaction with name [" + definition.getName() + "]: " + definition);
 			}
 			try {
-				// 返回此事务管理器是否应激活线程绑定事务同步支持
+				// 返回此事务管理器是否应激活线程绑定事务同步支持 如果事务管理器事务同步属性设置!=SYNCHRONIZATION_NEVER，则开启新的事务同步，否则，不开启
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
 				// 由于当前无事务，所以，上面三种传播属性，都是需要创建一个新的事务
 				DefaultTransactionStatus status = newTransactionStatus(
@@ -633,7 +639,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			boolean newSynchronization, boolean debug, @Nullable Object suspendedResources) {
 
 		// 是否是实际的新的事务同步
-		// 如果是新事务 && 如果当前线程的事务同步不是活跃状态 ===》为指定事务开启一个新的事务同步
+		// 如果开启新的事务同步 && 如果当前线程的事务同步不是活跃状态 ===》为指定事务开启一个新的事务同步
 		boolean actualNewSynchronization = newSynchronization &&
 				!TransactionSynchronizationManager.isSynchronizationActive();
 		return new DefaultTransactionStatus(
@@ -886,6 +892,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 			return;
 		}
 
+		// 提交
 		processCommit(defStatus);
 	}
 

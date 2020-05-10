@@ -21,6 +21,7 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 
 import org.springframework.lang.Nullable;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.ResourceHolderSupport;
 import org.springframework.util.Assert;
 
@@ -131,6 +132,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	 * (DataSourceTransactionManager.doBegin设置为true)
 	 * Set whether this holder represents an active, JDBC-managed transaction.
 	 * @see DataSourceTransactionManager
+	 * @see DataSourceTransactionManager#doBegin(Object, TransactionDefinition)
 	 */
 	protected void setTransactionActive(boolean transactionActive) {
 		this.transactionActive = transactionActive;
