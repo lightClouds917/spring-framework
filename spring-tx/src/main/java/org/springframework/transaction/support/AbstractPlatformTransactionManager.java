@@ -959,7 +959,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				// can only be caused by doCommit
 				// 如果标记为 提交失败时回滚
 				if (isRollbackOnCommitFailure()) {
-					//TODO
+					//回滚事务
 					doRollbackOnCommitException(status, ex);
 				}
 				else {
@@ -1091,24 +1091,29 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	}
 
 	/**
+	 * 调用{@code doRollback}，以正确处理回滚异常。
 	 * Invoke {@code doRollback}, handling rollback exceptions properly.
-	 * @param status object representing the transaction
+	 * @param status object representing the transaction 当前事务对象
 	 * @param ex the thrown application exception or error
 	 * @throws TransactionException in case of rollback failure
 	 * @see #doRollback
 	 */
 	private void doRollbackOnCommitException(DefaultTransactionStatus status, Throwable ex) throws TransactionException {
 		try {
+			// 如果是个新事务
 			if (status.isNewTransaction()) {
 				if (status.isDebug()) {
 					logger.debug("Initiating transaction rollback after commit exception", ex);
 				}
+				// 回滚事务
 				doRollback(status);
 			}
+			// 如果事务处于活跃状态 && 参与事务失败后将现有事务全局标记为仅回滚
 			else if (status.hasTransaction() && isGlobalRollbackOnParticipationFailure()) {
 				if (status.isDebug()) {
 					logger.debug("Marking existing transaction as rollback-only after commit exception", ex);
 				}
+				// 设置事务为仅回滚
 				doSetRollbackOnly(status);
 			}
 		}
