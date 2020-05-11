@@ -367,6 +367,7 @@ public abstract class TransactionSynchronizationManager {
 		if (synchs == null) {
 			throw new IllegalStateException("Transaction synchronization is not active");
 		}
+		//注册事务同步
 		synchs.add(synchronization);
 	}
 

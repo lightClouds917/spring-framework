@@ -50,16 +50,25 @@ public abstract class ResourceHolderSynchronization<H extends ResourceHolder, K>
 	}
 
 
+	/**
+	 * 挂起
+	 * 解除资源同步
+	 */
 	@Override
 	public void suspend() {
 		if (this.holderActive) {
+			// 如果资源持有者处于活跃状态，则挂起资源同步
 			TransactionSynchronizationManager.unbindResource(this.resourceKey);
 		}
 	}
 
+	/**
+	 * 恢复资源同步
+	 */
 	@Override
 	public void resume() {
 		if (this.holderActive) {
+			// 如果资源持有者处于活跃状态，则恢复资源同步
 			TransactionSynchronizationManager.bindResource(this.resourceKey, this.resourceHolder);
 		}
 	}

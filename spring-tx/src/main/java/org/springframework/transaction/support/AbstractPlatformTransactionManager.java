@@ -431,13 +431,14 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				// 由于当前无事务，所以，上面三种传播属性，都是需要创建一个新的事务
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
-				// 开启事务
+				// 开启事务  注意：这是新建事务了才会调用了
 				doBegin(transaction, definition);
 				// 初始化事务同步
 				prepareSynchronization(status, definition);
 				return status;
 			}
 			catch (RuntimeException | Error ex) {
+				//恢复事务
 				resume(null, suspendedResources);
 				throw ex;
 			}
@@ -497,11 +498,12 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 				logger.debug("Suspending current transaction, creating new transaction with name [" +
 						definition.getName() + "]");
 			}
+			// 挂起当前事务和资源
 			SuspendedResourcesHolder suspendedResources = suspend(transaction);
 			try {
 				// 是否开启新的事务同步
 				boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
-				// 创建事务状态实例
+				// 创建一个新的事务状态实例
 				DefaultTransactionStatus status = newTransactionStatus(
 						definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
 				// 开启事务
@@ -699,7 +701,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	 * 前事务对象（或{@code null}仅暂停活动同步，如果有的话）
 	 * @param transaction the current transaction object
 	  (or {@code null} to just suspend active synchronizations, if any)
-	 * 回持有挂起资源的对象
+	 * 持有挂起资源的对象
 	 * @return an object that holds suspended resources
 	 * 如果事务和同步都没有激活，就返回null
 	 * (or {@code null} if neither transaction nor synchronization active)
@@ -710,13 +712,13 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 	protected final SuspendedResourcesHolder suspend(@Nullable Object transaction) throws TransactionException {
 		// 如果当前线程事务同步是活跃状态
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {
-			// 暂停当前的所有同步，并禁用当前线程的事务同步 返回挂起事务同步的对象列表        要暂挂的事务同步（同步）
+			// 1.暂停当前的所有同步，并禁用当前线程的事务同步 返回挂起事务同步的对象列表        要暂挂的事务同步（同步）
 			List<TransactionSynchronization> suspendedSynchronizations = doSuspendSynchronization();
 			try {
 				Object suspendedResources = null;
 				// 如果传入事务不为null
 				if (transaction != null) {
-					// 挂起当前事务资源，返回暂挂资源对象（比如resourceHoler，连接句柄）	  要暂挂的资源（资源）
+					// 2.挂起当前事务资源，返回暂挂资源对象（比如resourceHoler，连接句柄）	  要暂挂的资源（资源）
 					suspendedResources = doSuspend(transaction);
 				}
 				// 重置事务同步管理器的数据
@@ -744,7 +746,7 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		}
 		else if (transaction != null) {
 			// 如果线程事务同步未激活，但事务处于活跃状态，挂起当前事务资源，返回暂挂资源对象
-			// 事务同步未激活，所以就不用从事务同步管理器中获取相关属性值
+			// 事务同步未激活，所以就不用从事务同步管理器中获取相关属性值，也不需要挂起事务同步
 			// Transaction active but no synchronization active.
 			Object suspendedResources = doSuspend(transaction);
 			// 返回持有暂挂资源的对象
@@ -775,12 +777,14 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 
 		// 如果持有暂挂资源的对象不为null
 		if (resourcesHolder != null) {
+			// 1.恢复挂起的资源
 			// 获取暂挂资源
 			Object suspendedResources = resourcesHolder.suspendedResources;
 			if (suspendedResources != null) {
 				// 如果暂挂资源不为null,用事务对象和暂挂资源信息去恢复资源，恢复同步
 				doResume(transaction, suspendedResources);
 			}
+			// 2.恢复挂起的同步
 			// 获取暂停的同步
 			List<TransactionSynchronization> suspendedSynchronizations = resourcesHolder.suspendedSynchronizations;
 			if (suspendedSynchronizations != null) {
@@ -827,9 +831,12 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 		List<TransactionSynchronization> suspendedSynchronizations =
 				TransactionSynchronizationManager.getSynchronizations();
 		for (TransactionSynchronization synchronization : suspendedSynchronizations) {
+			// 挂起资源
 			synchronization.suspend();
 		}
+		// 清理当前事务的同步
 		TransactionSynchronizationManager.clearSynchronization();
+		// 返回暂挂资源
 		return suspendedSynchronizations;
 	}
 

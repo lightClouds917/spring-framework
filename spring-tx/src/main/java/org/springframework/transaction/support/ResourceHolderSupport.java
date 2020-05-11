@@ -40,7 +40,7 @@ import org.springframework.transaction.TransactionTimedOutException;
  */
 public abstract class ResourceHolderSupport implements ResourceHolder {
 
-	/**是否与事务同步*/
+	/**资源是否与事务同步*/
 	private boolean synchronizedWithTransaction = false;
 
 	/**是否仅回滚*/

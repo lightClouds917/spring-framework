@@ -277,7 +277,7 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 
 		try {
 			// 如果这个事务的连接句柄为空
-			// 或者这个事务的连接句柄不为空但是这个事务的资源持有者与事务同步（已经存在事务）TODO
+			// 或者这个事务的连接句柄不为空但是这个事务的资源持有者与事务同步（说明已经存在事务）TODO
 			// 都需要从数据源重新获取连接
 			if (!txObject.hasConnectionHolder() ||
 					txObject.getConnectionHolder().isSynchronizedWithTransaction()) {
@@ -370,6 +370,7 @@ public class DataSourceTransactionManager extends AbstractPlatformTransactionMan
 
 	/**
 	 * 恢复
+	 * 恢复挂起的资源
 	 *
 	 * {@code doGetTransaction}返回的事务对象
 	 * @param transaction transaction object returned by {@code doGetTransaction}
