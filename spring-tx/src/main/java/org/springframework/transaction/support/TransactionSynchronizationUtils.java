@@ -110,6 +110,7 @@ public abstract class TransactionSynchronizationUtils {
 	public static void triggerBeforeCompletion() {
 		for (TransactionSynchronization synchronization : TransactionSynchronizationManager.getSynchronizations()) {
 			try {
+				//内部是解绑线程与资源，释放连接
 				synchronization.beforeCompletion();
 			}
 			catch (Throwable tsex) {

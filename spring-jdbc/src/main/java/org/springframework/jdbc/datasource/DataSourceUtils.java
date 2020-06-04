@@ -485,15 +485,19 @@ public abstract class DataSourceUtils {
 
 		@Override
 		public void beforeCompletion() {
+			//如果持有者不再打开（即，未被其他资源（如通过事务同步进行清理的Hibernate Session）使用的其他资源不使用它），
+			// 请尽早释放Connection，以避免严格的JTA实现的问题，该实现期望在事务完成之前执行close调用。
 			// Release Connection early if the holder is not open anymore
 			// (that is, not used by another resource like a Hibernate Session
 			// that has its own cleanup via transaction synchronization),
 			// to avoid issues with strict JTA implementations that expect
 			// the close call before transaction completion.
 			if (!this.connectionHolder.isOpen()) {
+				//取消当前线程与资源的绑定
 				TransactionSynchronizationManager.unbindResource(this.dataSource);
 				this.holderActive = false;
 				if (this.connectionHolder.hasConnection()) {
+					//释放连接
 					releaseConnection(this.connectionHolder.getConnection(), this.dataSource);
 				}
 			}

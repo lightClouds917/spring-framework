@@ -933,6 +933,11 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 					}
 					//设置unexpectedRollback状态
 					//如果全局仅回滚，则设置unexpectedRollback=true，否则为false
+					//isGlobalRollbackOnly的值判断来源和RollbackOnly有关
+					/**
+					 * aaaaa
+					 * @see AbstractPlatformTransactionManager#processRollback(DefaultTransactionStatus, boolean)
+					 */
 					unexpectedRollback = status.isGlobalRollbackOnly();
 					//释放掉该事务保存点
 					status.releaseHeldSavepoint();
@@ -1066,6 +1071,11 @@ public abstract class AbstractPlatformTransactionManager implements PlatformTran
 								logger.debug("Participating transaction failed - marking existing transaction as rollback-only");
 							}
 							//设置事务状态为仅回滚
+							//这里设置完后，全局事务提交时，会检查这个状态位
+							//全局isGlobalRollBackOnly的判断和这个值有关系
+							/**
+							 * @see DefaultTransactionStatus#isGlobalRollbackOnly()
+							 */
 							doSetRollbackOnly(status);
 						}
 						else {
